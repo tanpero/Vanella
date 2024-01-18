@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "noImplicitAny": true,
+        "outDir": "out",
+        "paths": { },
+        "removeComments": false,
+        "sourceMap": true,
+        "strict": true,
+        "target": "esnext"
+    },
+    "include": [
+        "src/ipc.ts",
+        "src/main.ts",
+        "src/preload.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
+
