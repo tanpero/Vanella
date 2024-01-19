@@ -2,6 +2,7 @@ const esbuild = require('esbuild');
 const sassPlugin = require('esbuild-plugin-sass');
 
 const fs = require('fs-extra');
+const { platform } = require('os');
 
 const sourcePath = 'src/app/index.html';
 const destinationPath = 'dist/app/index.html';
@@ -33,6 +34,7 @@ esbuild.build({
   bundle: true,
   target: 'es2020',
   outfile: 'dist/app/bundle.js',
+  platform: 'node',
   loader: {
     '.ts': 'ts',
     '.tsx': 'tsx',

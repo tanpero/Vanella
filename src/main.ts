@@ -38,8 +38,9 @@ const createWindow = (type: 'dev' | 'prod' = 'dev') => {
         transparent: true,
         resizable: true,
         frame: false,
-        titleBarStyle: "customButtonsOnHover",
+        titleBarStyle: 'hidden',
         webPreferences: {
+            webSecurity: false,
             nodeIntegration: true,
             preload: join(__dirname, 'preload.js')
         }

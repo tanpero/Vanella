@@ -27,6 +27,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "electron-drag": "^2.0.0",
     "monaco": "^1.201704190613.0+9ac64297a3b2ace5240299ba54b03f5029378397"
   }
 }
