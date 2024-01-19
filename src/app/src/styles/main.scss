@@ -1,0 +1,55 @@
+@media (prefers-color-scheme: light) {
+  body {
+    background-color: #ffffff; /* 浅色模式样式 */
+    color: #000000;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #000000; /* 深色模式样式 */
+    color: #ffffff;
+  }
+}
+
+
+// 重置样式
+body, h1, h2, h3, p, ul, li {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+      system-ui, -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI", Roboto,
+      "Helvetica Neue",
+      Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #333; // 根据系统主题调整颜色
+}
+
+.container {
+  display: flex;
+  width: 100vw;
+}
+
+.left-pane, .right-pane {
+  flex: 1;
+}
+
+.right-pane {
+  font-size: 1em; // 正文字号
+  line-height: 1.618; // 行高
+  margin: 1.618em; // 页边距
+  p {
+    text-indent: 2em; // 首行缩进
+    margin-bottom: 1.326em; // 段间距
+    // 汉字与拉丁字母和阿拉伯数字间的额外空隙
+    .chinese {
+      letter-spacing: 0.1em;
+    }
+  }
+}

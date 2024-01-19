@@ -2,10 +2,10 @@
   "name": "vanella",
   "version": "0.1.0",
   "description": "A writing and inspiration archiving application",
-  "main": "out/main.js",
+  "main": "dist/main.js",
   "scripts": {
-    "start": "tsc && electron .",
-    "build": "tsc && electron-builder",
+    "start": "node build.js && electron .",
+    "build": "node build.js && electron-builder",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -25,6 +25,7 @@
     "electron-builder": "^24.9.1",
     "esbuild": "^0.19.11",
     "esbuild-plugin-sass": "^1.0.1",
+    "fs-extra": "^11.2.0",
     "sass": "^1.70.0",
     "typescript": "^5.3.3"
   }
