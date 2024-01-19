@@ -8,10 +8,7 @@
     "build": "node build.js && electron-builder",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tanpero/Vanella.git"
-  },
+  "repository": "git+https://github.com/tanpero/Vanella.git",
   "author": "Camille",
   "license": "MPL-2.0",
   "bugs": {
@@ -28,5 +25,8 @@
     "fs-extra": "^11.2.0",
     "sass": "^1.70.0",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "monaco": "^1.201704190613.0+9ac64297a3b2ace5240299ba54b03f5029378397"
   }
 }

@@ -1,13 +1,13 @@
 @media (prefers-color-scheme: light) {
   body {
-    background-color: #ffffff; /* 浅色模式样式 */
+    background-color: rgba(255, 255, 255, 0.75); /* 浅色模式样式 */
     color: #000000;
   }
 }
 
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: #000000; /* 深色模式样式 */
+    background-color: rgba(0, 0, 0, 0.75); /* 深色模式样式 */
     color: #ffffff;
   }
 }
@@ -20,6 +20,7 @@ body, h1, h2, h3, p, ul, li {
 }
 
 body {
+  -webkit-app-region: drag;
   font-family:
       system-ui, -apple-system,
       BlinkMacSystemFont,
@@ -28,7 +29,6 @@ body {
       Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  color: #333; // 根据系统主题调整颜色
 }
 
 .container {
@@ -52,4 +52,8 @@ body {
       letter-spacing: 0.1em;
     }
   }
+}
+
+h1, h2, h3, h4, h5, h6, p {
+  -webkit-app-region: no-drag;
 }

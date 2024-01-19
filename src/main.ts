@@ -2,6 +2,7 @@ import { BrowserWindow, app, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { ElectronChannel } from './ipc'
 
+
 const main = () => {
     onReady('dev')
     appListens()
@@ -34,6 +35,10 @@ const createWindow = (type: 'dev' | 'prod' = 'dev') => {
     const win = new BrowserWindow({
         width: 800,
         height: 600,
+        transparent: true,
+        resizable: true,
+        frame: false,
+        titleBarStyle: "customButtonsOnHover",
         webPreferences: {
             nodeIntegration: true,
             preload: join(__dirname, 'preload.js')
