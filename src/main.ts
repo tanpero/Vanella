@@ -18,6 +18,10 @@ const onReady = (type: 'dev' | 'prod') => {
 const mainWindowListens = (mainWindow: BrowserWindow) => {
     ipcMainHandles(mainWindow)
     ipcMainOnS(mainWindow)
+    ipcMain.on("minimize", () => mainWindow.minimize())
+    ipcMain.on("maximize", () => mainWindow.maximize())
+    ipcMain.on("unmaximize", () => mainWindow.unmaximize())    
+    ipcMain.on("close", () => mainWindow.close())
 }
 
 const ipcMainOnS = (mainWindow: BrowserWindow) => {

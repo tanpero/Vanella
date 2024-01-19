@@ -1,7 +1,5 @@
-import { BrowserWindow } from "electron"
+declare const electronApi: any
 
-const win = BrowserWindow.getFocusedWindow() /* Note this is different to the
-html global `window` variable */
 
 // When document has loaded, initialise
 document.onreadystatechange = (event) => {
@@ -10,41 +8,34 @@ document.onreadystatechange = (event) => {
     }
 }
 
-window.onbeforeunload = (event) => {
-    /* If window is reloaded, remove win event listeners
-    (DOM element listeners get auto garbage collected but not
-    Electron win listeners as the win is not dereferenced unless closed) */
-    win.removeAllListeners()
-}
 
 function handleWindowControls() {
     // Make minimise/maximise/restore/close buttons work when they are clicked
     document.getElementById('min-button').addEventListener("click", event => {
-        win.minimize()
+        electronApi.minimize()
     })
 
     document.getElementById('max-button').addEventListener("click", event => {
-        win.maximize()
+        electronApi.maximize()
     })
 
     document.getElementById('restore-button').addEventListener("click", event => {
-        win.unmaximize()
+        electronApi.unmaximize()
     })
 
     document.getElementById('close-button').addEventListener("click", event => {
-        win.close()
+        electronApi.close()
     })
 
-    // Toggle maximise/restore buttons when maximisation/unmaximisation occurs
-    toggleMaxRestoreButtons()
-    win.on('maximize', toggleMaxRestoreButtons)
-    win.on('unmaximize', toggleMaxRestoreButtons)
+    window.addEventListener('resize', toggleMaxRestoreButtons)
+}
 
-    function toggleMaxRestoreButtons() {
-        if (win.isMaximized()) {
-            document.body.classList.add('maximized')
-        } else {
-            document.body.classList.remove('maximized')
-        }
+
+const toggleMaxRestoreButtons = e => {
+    if (window.outerHeight === screen.availHeight && window.outerWidth === screen.availWidth) {
+        document.body.classList.add('maximized')
+    } else {
+        document.body.classList.remove('maximized')
     }
 }
+
