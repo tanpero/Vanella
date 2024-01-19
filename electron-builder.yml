@@ -1,0 +1,17 @@
+appId: io.vanella
+productName: vanella
+directories:
+  output: dist
+  buildResources: out
+files:
+  - '**/*'
+  - '!node_modules/**/*'
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+electronDownload:
+  mirror: "https://npm.taobao.org/mirrors/electron/"
+
