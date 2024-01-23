@@ -1,5 +1,6 @@
-declare const electronApi: any
+import Manager from './window-max-and-restore-status-manager'
 
+declare const electronApi: any
 
 // When document has loaded, initialise
 document.onreadystatechange = (event) => {
@@ -11,19 +12,13 @@ document.onreadystatechange = (event) => {
 
 function handleWindowControls() {
     // Make minimise/maximise/restore/close buttons work when they are clicked
-    document.getElementById('min-button').addEventListener("click", event => {
+    document.getElementById('min-button')?.addEventListener("click", event => {
         electronApi.minimize()
     })
 
-    document.getElementById('max-button').addEventListener("click", event => {
-        electronApi.maximize()
-    })
+    const manager = new Manager(document.getElementById('max-button') as HTMLElement, document.getElementById('restore-button') as HTMLElement)
 
-    document.getElementById('restore-button').addEventListener("click", event => {
-        electronApi.unmaximize()
-    })
-
-    document.getElementById('close-button').addEventListener("click", event => {
+    document.getElementById('close-button')?.addEventListener("click", event => {
         electronApi.close()
     })
 

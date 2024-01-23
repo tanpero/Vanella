@@ -27,7 +27,15 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.3.3",
+    "@codemirror/lang-markdown": "^6.2.4",
+    "@codemirror/view": "^6.23.0",
+    "codemirror": "^6.0.1",
     "electron-drag": "^2.0.0",
-    "monaco": "^1.201704190613.0+9ac64297a3b2ace5240299ba54b03f5029378397"
+    "rehype-stringify": "^10.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.0",
+    "unified": "^11.0.4",
+    "unified-stream": "^3.0.0"
   }
 }
