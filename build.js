@@ -34,13 +34,10 @@ esbuild.build({
   bundle: true,
   target: 'es2020',
   outfile: 'dist/app/bundle.js',
-  platform: 'node',
   loader: {
     '.ts': 'ts',
-    '.tsx': 'tsx',
     '.js': 'js',
-    '.jsx': 'jsx',
-    '.sass': 'css', // 设置 SASS 文件的加载器为 'css'
+    '.sass': 'css',
   },
   sourcemap: true,
   plugins: [sassPlugin()],

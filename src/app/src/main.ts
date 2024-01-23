@@ -9,5 +9,5 @@ import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import rehypeStringify from 'rehype-stringify'
 
-window.addEventListener("DOMContentLoaded", () => run('#editor'))
+run('#editor')
 
