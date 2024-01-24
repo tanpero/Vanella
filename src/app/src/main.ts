@@ -9,5 +9,10 @@ import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import rehypeStringify from 'rehype-stringify'
 
-run('#editor')
+const processor = unified()
+  .use(remarkParse)
+  .use(remarkRehype)
+  .use(rehypeStringify)
+
+run('#editor', '#viewer', (markdown: string) => String(processor.processSync(markdown)))
 
