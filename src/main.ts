@@ -1,4 +1,4 @@
-import { BrowserWindow, app, ipcMain, dialog } from 'electron'
+import { BrowserWindow, app, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { ElectronChannel } from './ipc'
 
@@ -67,6 +67,12 @@ const appListens = () => {
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0)
             createWindow()
+    })
+    app.on('web-contents-created', (e, webContents) => {
+        webContents.on('will-navigate', (event, url) => {
+            event.preventDefault()
+            shell.openExternal(url)
+        })
     })
 }
 
