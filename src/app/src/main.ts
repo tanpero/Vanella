@@ -7,6 +7,7 @@ import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import remarkMath from 'remark-math'
+import remarkImages from 'remark-images'
 
 import rehypeStringify from 'rehype-stringify'
 import rehypeSlug from 'rehype-slug'
@@ -25,6 +26,7 @@ import 'highlight.js/styles/monokai.css'
 const processor = unified()
   .use(remarkParse)
   .use(remarkMath)
+  .use(remarkImages)
   .use(remarkRehype)
   .use(rehypeDocument, {title: ''})
   .use(rehypeSlug)

@@ -46,6 +46,7 @@ export const run = (editorSelector: string,
       }),
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       syntaxHighlighting(defaultHighlightStyle),
+      EditorView.lineWrapping,
       
       updateListener,
     ],
