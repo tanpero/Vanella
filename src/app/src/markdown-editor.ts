@@ -19,11 +19,7 @@ export const run = (editorSelector: string,
                     viewerSelector: string,
                     markdownProcessor: MarkdownProcessor
                   ) => {
-  const doc = `
-  # Hello world
-  ---
-  **Marisa**
-  `
+  const doc = ''
   
   const viewer = document.querySelector(viewerSelector) as HTMLDivElement
   const editor = document.querySelector(editorSelector) as HTMLDivElement

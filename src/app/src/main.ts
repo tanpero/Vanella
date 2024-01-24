@@ -8,15 +8,14 @@ import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
 import remarkMath from 'remark-math'
 import remarkImages from 'remark-images'
+import remarkUnwrapImages from 'remark-unwrap-images'
+import remarkGfm from 'remark-gfm'
 
 import rehypeStringify from 'rehype-stringify'
 import rehypeSlug from 'rehype-slug'
 import rehypeDocument from 'rehype-document'
 import rehypeToc from 'rehype-toc'
 import rehypeFormat from 'rehype-format'
-import remarkRetext from 'remark-retext'
-import retextEmoji from 'retext-emoji'
-import retextStringify from 'retext-stringify'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeSanitize from 'rehype-sanitize'
 import rehypeMathjax from 'rehype-mathjax'
@@ -25,8 +24,10 @@ import 'highlight.js/styles/monokai.css'
 
 const processor = unified()
   .use(remarkParse)
+  .use(remarkGfm)
   .use(remarkMath)
   .use(remarkImages)
+  .use(remarkUnwrapImages)
   .use(remarkRehype)
   .use(rehypeDocument, {title: ''})
   .use(rehypeSlug)
