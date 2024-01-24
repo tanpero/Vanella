@@ -1,11 +1,19 @@
 import { basicSetup } from 'codemirror'
 import { EditorView, keymap } from '@codemirror/view'
-import { indentWithTab, defaultKeymap, historyKeymap, history } from '@codemirror/commands'
-import { markdown } from '@codemirror/lang-markdown'
-import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language"
+import { Compartment, EditorState } from '@codemirror/state'
+import { 
+        indentWithTab,
+        defaultKeymap, historyKeymap,
+        history
+      } from '@codemirror/commands'
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
+import { languages } from '@codemirror/language-data'
+import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 
 
 type MarkdownProcessor = (markdown: string) => string
+
+const theme = new Compartment()
 
 export const run = (editorSelector: string,
                     viewerSelector: string,
@@ -32,9 +40,13 @@ export const run = (editorSelector: string,
     extensions: [
       basicSetup,
       history(),
-      markdown(),
+      markdown({
+        base: markdownLanguage,
+			  codeLanguages: languages
+      }),
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       syntaxHighlighting(defaultHighlightStyle),
+      
       updateListener,
     ],
     parent: editor as HTMLDivElement

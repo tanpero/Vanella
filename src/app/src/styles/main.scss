@@ -189,17 +189,17 @@ body {
   display: none;
 }
 
-/* 设置行号栏的背景色为透明 */
+
 .cm-gutters {
   background-color: transparent !important;
 }
 
-/* 设置行号栏文字颜色为文档背景色的反色 */
+
 .cm-gutter-element {
-  color: #ffffff; /* 文档背景色的反色，你可能需要根据实际情况调整颜色 */
+  color: #ffffff;
 }
 
-/* 可选：如果你希望行号栏的文字颜色在鼠标悬停时发生变化，可以添加如下样式 */
 .cm-gutter-element:hover {
-  color: #000000; /* 文档背景色的原色或其他颜色 */
+  color: #000000;
 }
+
