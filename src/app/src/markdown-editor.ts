@@ -44,8 +44,21 @@ export const run = (editorSelector: string,
       syntaxHighlighting(defaultHighlightStyle),
       EditorView.lineWrapping,
       
+      EditorView.theme({
+        "&": {
+          height: "100%"
+        },
+        ".cm-scroller": {
+          overflow: "auto"
+        },
+
+        "&.cm-focused .cm-selectionBackground, ::selection": {
+          backgroundColor: "rgba(255, 185, 229, 0.5)"
+        },
+      }),
+
       updateListener,
     ],
-    parent: editor as HTMLDivElement
+    parent: editor as HTMLDivElement,
   })
 }
