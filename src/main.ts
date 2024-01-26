@@ -51,7 +51,6 @@ const createWindow = (type: 'dev' | 'prod' = 'dev') => {
     })
     if (type === 'dev') {
         win.loadFile(join(__dirname, 'app', 'index.html'))
-        win.webContents.openDevTools()
     } else if (type === 'prod') {
         const path = join(__dirname, 'app', 'index.html')
         win.loadFile(path)

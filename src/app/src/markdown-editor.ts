@@ -1,6 +1,5 @@
 import { basicSetup } from 'codemirror'
 import { EditorView, keymap } from '@codemirror/view'
-import { Compartment, EditorState } from '@codemirror/state'
 import { 
         indentWithTab,
         defaultKeymap, historyKeymap,
@@ -10,10 +9,10 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 
+import placeholders from './placeholder-decoration'
+
 
 type MarkdownProcessor = (markdown: string) => string
-
-const theme = new Compartment()
 
 export const run = (editorSelector: string,
                     viewerSelector: string,
@@ -34,6 +33,7 @@ export const run = (editorSelector: string,
   new EditorView({
     doc,
     extensions: [
+      placeholders,
       basicSetup,
       history(),
       markdown({
@@ -43,20 +43,6 @@ export const run = (editorSelector: string,
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       syntaxHighlighting(defaultHighlightStyle),
       EditorView.lineWrapping,
-      
-      EditorView.theme({
-        "&": {
-          height: "100%"
-        },
-        ".cm-scroller": {
-          overflow: "auto"
-        },
-
-        "&.cm-focused .cm-selectionBackground, ::selection": {
-          backgroundColor: "rgba(255, 185, 229, 0.5)"
-        },
-      }),
-
       updateListener,
     ],
     parent: editor as HTMLDivElement,
