@@ -71,6 +71,7 @@
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.0",
     "remark-retext": "^6.0.0",
+    "remark-stringify": "^11.0.0",
     "remark-toc": "^9.0.0",
     "remark-unwrap-images": "^4.0.0",
     "retext-emoji": "^9.0.0",

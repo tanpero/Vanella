@@ -31,10 +31,15 @@ body {
 .container {
   display: flex;
   width: 100vw;
+  overflow-x: hidden;
 }
 
 .left-pane, .right-pane {
   flex: 1;
+}
+
+.left-pane {
+  min-width: 50%;
 }
 
 .right-pane {
@@ -213,61 +218,24 @@ a {
 #viewer {
   img {
     max-width: 80%;
-    max-height: 80%;
-  }
-}
-
-// 全局样式
-$primary-color: #3498db;
-$secondary-color: #2ecc71;
-
-nav.toc {
-  list-style: none;
-  counter-reset: none;
-}
-
-
-
-// 有序列表样式
-ol {
-  list-style: none;
-  counter-reset: my-counter;
-  padding-left: 20px;
-  
-  li {
-    position: relative;
-    counter-increment: my-counter;
-    margin-bottom: 10px;
-
-    &::before {
-      content: counter(my-counter);
-      position: absolute;
-      left: -30px;
-      color: $primary-color;
-    }
+    max-height: 80%;      
+    margin: auto;
+    display: block;
   }
 }
 
 // 无序列表样式
 ul {
   list-style: none;
-  padding-left: 20px;
   
   li {
     position: relative;
     margin-bottom: 10px;
-
-    &::before {
-      content: '\2022'; // 使用实心圆点作为符号
-      position: absolute;
-      left: -20px;
-      color: $secondary-color;
-    }
   }
 }
 
 blockquote {
-  border-left: 2px solid $primary-color;
+  border-left: 2px solid #3498db;
   padding-left: 20px;
   margin: 0 0 20px;
   font-style: italic;
