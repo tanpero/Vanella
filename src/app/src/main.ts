@@ -1,6 +1,6 @@
 import './styles/main.scss'
 import './title-bar-controllers'
-import { run } from './markdown-editor'
+import { run, load } from './markdown-editor'
 
 import { unified } from 'unified'
 
@@ -41,4 +41,12 @@ const processor = unified()
   .use(rehypeFormat)
   .use(rehypeStringify)
 
+declare const vanella: any
+
 run('#editor', '#viewer', (markdown: string) => String(processor.processSync(markdown)))
+
+vanella.bindFileManipulation({
+  'file-content': content => load(content)
+})
+
+vanella.openFile()

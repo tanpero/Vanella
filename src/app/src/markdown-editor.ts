@@ -11,6 +11,8 @@ import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 
 import placeholders from './placeholder-decoration'
 
+declare let editorView: EditorView
+
 
 type MarkdownProcessor = (markdown: string) => string
 
@@ -30,7 +32,7 @@ export const run = (editorSelector: string,
   })
 
 
-  new EditorView({
+  editorView = new EditorView({
     doc,
     extensions: [
       placeholders,
@@ -46,5 +48,15 @@ export const run = (editorSelector: string,
       updateListener,
     ],
     parent: editor as HTMLDivElement,
+  })
+}
+
+export const load = (content: string) => {
+  editorView.dispatch({
+    changes: {
+      from: 0,
+      to: editorView.state.doc.length,
+      insert: content
+    }
   })
 }

@@ -1,6 +1,7 @@
 import { BrowserWindow, app, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { ElectronChannel } from './ipc'
+import * as fs from 'fs';
 
 
 const main = () => {
@@ -16,24 +17,36 @@ const onReady = (type: 'dev' | 'prod') => {
 }
 
 const mainWindowListens = (mainWindow: BrowserWindow) => {
-    ipcMainHandles(mainWindow)
-    ipcMainOnS(mainWindow)
     ipcMain.on("minimize", () => mainWindow.minimize())
     ipcMain.on("maximize", () => mainWindow.maximize())
     ipcMain.on("unmaximize", () => mainWindow.unmaximize())    
     ipcMain.on("close", () => mainWindow.close())
+
+    ipcMain.on('open-file-dialog', async (event) => {
+        try {
+          const result = await dialog.showOpenDialog({
+            properties: ['openFile'],
+            filters: [{ name: 'Text Files', extensions: ['txt'] }],
+          });
+          event.reply('open-file-dialog-reply', result);
+        } catch (error) {
+          console.error('Error opening file dialog:', error);
+          event.reply('open-file-dialog-reply', { error: error.message });
+        }
+      });
+      
+      ipcMain.on('open-file', async (event, filePath) => {
+        try {
+          const fileContent = await fs.promises.readFile(filePath, 'utf-8');
+          event.reply('file-content', fileContent);
+        } catch (error) {
+          event.reply('file-error', error.message);
+        }
+      });
+
 }
 
-const ipcMainOnS = (mainWindow: BrowserWindow) => {
-}
 
-const ipcMainHandles = (mainWindow: BrowserWindow) => {
-    ipcMain.handle(ElectronChannel.openDialog, () => {
-        dialog.showOpenDialog(mainWindow).then(v => {
-            console.log(v)
-        })
-    })
-}
 
 const createWindow = (type: 'dev' | 'prod' = 'dev') => {
     const win = new BrowserWindow({
