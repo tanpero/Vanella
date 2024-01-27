@@ -23,6 +23,7 @@ import rehypeMathjax from 'rehype-mathjax'
 import generateTOC from './table-of-contents-generator'
 
 import 'highlight.js/styles/monokai.css'
+import ShortcutListener from './shortcut-listener'
 
 const processor = unified()
   .use(remarkParse)
@@ -46,7 +47,9 @@ declare const vanella: any
 run('#editor', '#viewer', (markdown: string) => String(processor.processSync(markdown)))
 
 vanella.bindFileManipulation({
-  'file-content': content => load(content)
+  'file-content': content => load(content),
 })
 
-vanella.openFile()
+const shortcut = new ShortcutListener
+
+shortcut.when('Ctrl O').to(() => vanella.openFile())

@@ -1,4 +1,4 @@
-declare const electronApi: any
+declare const vanella: any
 
 class MaxAndRestoreStatusManager {
     private currentStatus: string
@@ -56,11 +56,11 @@ class MaxAndRestoreStatusManager {
       }      
       this.currentStatus = 'max'
       this.setMaxButton = this.setRestoreButton
-      electronApi.maximize()
+      vanella.maximize()
     }
   
     private restoreCoordinatesAndSwitchStatus() {
-      electronApi.unmaximize()
+      vanella.unmaximize()
       window.resizeTo(this.rememberedCoordinates.width, this.rememberedCoordinates.height)
       window.moveTo(this.rememberedCoordinates.left, this.rememberedCoordinates.top)
       this.currentStatus = 'default'
@@ -68,7 +68,7 @@ class MaxAndRestoreStatusManager {
     }
   
     private switchToMaxStatus() {
-      electronApi.maximize()
+      vanella.maximize()
       this.currentStatus = 'max'
     }
 
