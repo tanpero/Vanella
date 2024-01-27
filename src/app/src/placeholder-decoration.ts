@@ -34,11 +34,11 @@ class PlaceholderWidget extends WidgetType {
     this.name = name
   }
 
-    eq(other: PlaceholderWidget) {
+  eq(other: PlaceholderWidget) {
     return this.name == other.name
   }
 
-    toDOM() {
+  toDOM() {
     let elt = document.createElement("span")
     elt.style.cssText = `
       border: 1px solid orange;
@@ -52,7 +52,7 @@ class PlaceholderWidget extends WidgetType {
     return elt
   }
 
-    ignoreEvent() {
+  ignoreEvent() {
     return false
   }
 }

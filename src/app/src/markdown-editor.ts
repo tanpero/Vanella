@@ -51,7 +51,7 @@ export const run = (editorSelector: string,
   })
 }
 
-export const load = (content: string) => {
+export const upload = (content: string) => {
   editorView.dispatch({
     changes: {
       from: 0,
@@ -60,3 +60,5 @@ export const load = (content: string) => {
     }
   })
 }
+
+export const download = () => editorView.state.doc.toString()

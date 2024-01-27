@@ -1,6 +1,6 @@
 import './styles/main.scss'
 import './title-bar-controllers'
-import { run, load } from './markdown-editor'
+import { download, run, upload } from './markdown-editor'
 
 import { unified } from 'unified'
 
@@ -47,9 +47,15 @@ declare const vanella: any
 run('#editor', '#viewer', (markdown: string) => String(processor.processSync(markdown)))
 
 vanella.bindFileManipulation({
-  'file-content': content => load(content),
+  'file-content': content => upload(content),
+  'file-saved': path => console.log(path),
+  'file-save-error': info => alert(info),
+  'save-as-file-dialog-reply': path => console.log(path)
 })
+
 
 const shortcut = new ShortcutListener
 
 shortcut.when('Ctrl O').to(() => vanella.openFile())
+shortcut.when('Ctrl S').to(() => vanella.saveFile(download()))
+shortcut.when('Ctrl Shift S').to(() => vanella.saveAsFile(download()))
