@@ -1,25 +1,26 @@
 import Manager from './window-max-and-restore-status-manager'
 
-declare const electronApi: any
+declare const vanella: any
 
-// When document has loaded, initialise
-document.onreadystatechange = (event) => {
-    if (document.readyState == "complete") {
+document.addEventListener('readystatechange', () => {
+    if (document.readyState == 'complete') {
         handleWindowControls()
     }
-}
+})
 
 
 function handleWindowControls() {
-    // Make minimise/maximise/restore/close buttons work when they are clicked
-    document.getElementById('min-button')?.addEventListener("click", event => {
-        electronApi.minimize()
+    document.getElementById('min-button')?.addEventListener('click', event => {
+        vanella.minimize()
     })
 
-    const manager = new Manager(document.getElementById('max-button') as HTMLElement, document.getElementById('restore-button') as HTMLElement)
+    const manager = new Manager(
+        document.getElementById('max-button') as HTMLElement,
+        document.getElementById('restore-button') as HTMLElement
+    )
 
-    document.getElementById('close-button')?.addEventListener("click", event => {
-        electronApi.close()
+    document.getElementById('close-button')?.addEventListener('click', event => {
+        vanella.close()
     })
 
     window.addEventListener('resize', toggleMaxRestoreButtons)
