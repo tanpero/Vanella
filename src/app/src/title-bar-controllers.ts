@@ -1,4 +1,5 @@
 import Manager from './window-max-and-restore-status-manager'
+import { willClose } from './interaction-messages'
 
 declare const vanella: any
 
@@ -20,7 +21,7 @@ function handleWindowControls() {
     )
 
     document.getElementById('close-button')?.addEventListener('click', event => {
-        vanella.close()
+        vanella.toClose()
     })
 
     window.addEventListener('resize', toggleMaxRestoreButtons)

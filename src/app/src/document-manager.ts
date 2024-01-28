@@ -20,7 +20,9 @@ export class DocumentManager {
     }
 
     public modify(): void {
-        this.state.status = DocumentStatus.UnsavedChanges
+        if (this.state.status === DocumentStatus.Saved) {
+            this.state.status = DocumentStatus.UnsavedChanges
+        }
     }
 
     public openDocument(filePath: string, directoryPath: string): void {
@@ -43,7 +45,6 @@ export class DocumentManager {
     }
 
     public saveDocumentAs(filePath: string, directoryPath: string): void {
-        console.log("saveDocumentAs " + filePath)
         this.state = {
             status: DocumentStatus.Saved,
             filePath,

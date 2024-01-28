@@ -19,6 +19,7 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
     ipcMain.on("maximize", () => mainWindow.maximize())
     ipcMain.on("unmaximize", () => mainWindow.unmaximize())    
     ipcMain.on("close", () => mainWindow.close())
+    ipcMain.on("to-close", event => event.reply("to-check-if-be-saved"))
 
     ipcMain.on('open-file-dialog', async (event) => {
         try {

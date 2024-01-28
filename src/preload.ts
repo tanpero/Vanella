@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('vanella', {
     maximize() { ipcRenderer.send("maximize") },
     unmaximize() { ipcRenderer.send("unmaximize") },
     close() { ipcRenderer.send("close") },
-
+    toClose() { ipcRenderer.send("to-close") },
 
     async openFile() {
         try {
@@ -41,11 +41,17 @@ contextBridge.exposeInMainWorld('vanella', {
     },
 
     bindFileManipulation({
+        'to-check-if-be-saved': callbackToCheckIfBeSaved,
         'file-content': callbackOfFileContent,
         'file-saved': callbackOfFileSaved,
         'file-save-error': callbackOfFileSaveError,
         // TODO...
     }) {
+
+        ipcRenderer.on('to-check-if-be-saved', (event) => {
+            callbackToCheckIfBeSaved()
+        })
+
         ipcRenderer.on('open-file-dialog-reply', (event, result) => {
             if (!result.error && !result.canceled) {
                 const filePath = result.filePaths[0]
@@ -83,7 +89,6 @@ contextBridge.exposeInMainWorld('vanella', {
             }
         })
 
-        // Add listeners for other events as needed...
     },
 })
 
