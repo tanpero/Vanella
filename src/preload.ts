@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('vanella', {
         }
     },    
 
-    async saveFile(contentToSave, filePath: string | undefined) {
+    async saveFile(contentToSave, filePath: string | undefined, thenWillBeNew: boolean = false) {
         if (!filePath) {
             try {
                 ipcRenderer.send('save-file-dialog', contentToSave)
@@ -27,6 +27,7 @@ contextBridge.exposeInMainWorld('vanella', {
             ipcRenderer.send('save-file', {
                 filePath,
                 contentToSave,
+                thenWillBeNew
             })
         }
         
@@ -92,6 +93,4 @@ contextBridge.exposeInMainWorld('vanella', {
     },
 })
 
-
-        
 

@@ -90,8 +90,6 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
             event.reply('save-as-file-dialog-reply', { error: error.message })
         }
     })
-    
-
 }
 
 const createWindow = () => {

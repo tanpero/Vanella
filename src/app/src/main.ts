@@ -21,7 +21,7 @@ const updateTitle = () => {
   const path = stateManager.getFilePath()
   title.innerText = (status === DocumentStatus.New ? '' : extractFileName(path as string))
   title.style.marginLeft = '3em'
-  title.innerText += (status === DocumentStatus.Saved ? "✔" : "💡" )
+  title.innerText += (status === DocumentStatus.Saved ? "📖" : "💡" )
 }
 
 run('#editor', '#viewer', (markdown: string) => {
@@ -37,6 +37,7 @@ vanella.bindFileManipulation({
         if (download().trim() === '') {
           vanella.close()
         }
+        break
       case DocumentStatus.UnsavedChanges:
         let choice = confirm(willClose)
         if (choice) {
@@ -44,13 +45,14 @@ vanella.bindFileManipulation({
         }
         break
       case DocumentStatus.Saved:
+        vanella.close()
         break
     }
   },
   'file-content': (filePath, dirPath, content) => {
+    upload(content)
     stateManager.openDocument(filePath, dirPath)
     updateTitle()
-    upload(content)
   },
   'file-saved': (filePath, dirPath) => {
     stateManager.saveDocumentAs(filePath, dirPath)
@@ -82,13 +84,14 @@ shortcut.when('Ctrl N').to(() => {
     case DocumentStatus.Saved:
       break
   }
-     
   stateManager = new DocumentManager
-  updateTitle()
   upload('')
+  updateTitle()
 })
 
-shortcut.when('Ctrl O').to(() => vanella.openFile())
+shortcut.when('Ctrl O').to(() => {
+  vanella.openFile()
+})
 
 shortcut.when('Ctrl S').to(() => {
   switch (stateManager.getStatus()) {

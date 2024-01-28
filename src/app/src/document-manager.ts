@@ -15,7 +15,9 @@ export class DocumentManager {
 
     constructor() {
         this.state = {
-            status: DocumentStatus.New
+            status: DocumentStatus.New,
+            filePath: '',
+            directoryPath: '',
         }
     }
 
@@ -27,7 +29,7 @@ export class DocumentManager {
 
     public openDocument(filePath: string, directoryPath: string): void {
         this.state = {
-            status: DocumentStatus.UnsavedChanges,
+            status: DocumentStatus.Saved,
             filePath,
             directoryPath
         }
