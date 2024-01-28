@@ -1,5 +1,5 @@
 import { BrowserWindow, app, ipcMain, dialog, shell } from 'electron'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import * as fs from 'fs'
 
 const main = () => {
@@ -36,7 +36,7 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
     ipcMain.on('open-file', async (event, filePath) => {
         try {
             const fileContent = await fs.promises.readFile(filePath, 'utf-8')
-            event.reply('file-content', fileContent)
+            event.reply('file-content', filePath, dirname(filePath), fileContent)
         } catch (error) {
             event.reply('file-error', error.message)
         }
@@ -64,7 +64,7 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
     ipcMain.on('save-file', async (event, { filePath, contentToSave }) => {
         try {
             await fs.promises.writeFile(filePath, contentToSave, 'utf-8')
-            event.reply('file-saved', { filePath })
+            event.reply('file-saved', filePath, dirname(filePath))
         } catch (error) {
             console.error('Error saving file:', error)
             event.reply('file-save-error', { error: error.message })

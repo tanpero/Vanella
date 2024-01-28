@@ -1,4 +1,4 @@
-import { ipcRenderer, contextBridge, BrowserWindow } from 'electron'
+import { ipcRenderer, contextBridge } from 'electron'
 
 contextBridge.exposeInMainWorld('vanella', {
     
@@ -16,12 +16,20 @@ contextBridge.exposeInMainWorld('vanella', {
         }
     },    
 
-    async saveFile(contentToSave) {
-        try {
-            ipcRenderer.send('save-file-dialog', contentToSave)
-        } catch (error) {
-            console.error('Error sending save-file-dialog:', error)
+    async saveFile(contentToSave, filePath: string | undefined) {
+        if (!filePath) {
+            try {
+                ipcRenderer.send('save-file-dialog', contentToSave)
+            } catch (error) {
+                console.error('Error sending save-file-dialog:', error)
+            }
+        } else {
+            ipcRenderer.send('save-file', {
+                filePath,
+                contentToSave,
+            })
         }
+        
     },
 
     async saveAsFile(contentToSave) {
@@ -36,7 +44,6 @@ contextBridge.exposeInMainWorld('vanella', {
         'file-content': callbackOfFileContent,
         'file-saved': callbackOfFileSaved,
         'file-save-error': callbackOfFileSaveError,
-        'save-as-file-dialog-reply': callbackOfSaveAsFileDialog,
         // TODO...
     }) {
         ipcRenderer.on('open-file-dialog-reply', (event, result) => {
@@ -48,13 +55,17 @@ contextBridge.exposeInMainWorld('vanella', {
             }
         })
 
-        ipcRenderer.on('file-content', (event, fileContent: string) => {
-            callbackOfFileContent(fileContent)
+        ipcRenderer.on('file-content', (event, filePath: string, dirPath:string, fileContent: string) => {
+            callbackOfFileContent(filePath, dirPath, fileContent)
+        })
+
+        ipcRenderer.on('file-saved', (event, filePath: string, dirPath:string) => {
+            callbackOfFileSaved(filePath, dirPath)
         })
 
         ipcRenderer.on('save-file-dialog-reply', (event, result) => {
             if (!result.error && !result.canceled) {
-                callbackOfFileSaved(result.filePath)
+                callbackOfFileSaved(result.filePath, result.dirPath)
             } else if (result.canceled) {
                 console.info('File save operation canceled by the user.')
             } else {
@@ -64,7 +75,7 @@ contextBridge.exposeInMainWorld('vanella', {
 
         ipcRenderer.on('save-as-file-dialog-reply', (event, result) => {
             if (!result.error && !result.canceled) {
-                callbackOfSaveAsFileDialog(result.filePath)
+                callbackOfFileSaved(result.filePath)
             } else if (result.canceled) {
                 console.info('File save as operation canceled by the user.')
             } else {
