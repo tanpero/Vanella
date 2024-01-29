@@ -1,0 +1,63 @@
+/* 定义滚动条宽度和颜色 */
+$scrollbar-width: 8px;
+$scrollbar-color: #808080; // 灰色
+
+/* 定义半圆半径和箭头颜色 */
+$border-radius: 4px;
+$arrow-color: #ffffff; // 白色
+
+/* 定义透明背景颜色 */
+$transparent-bg: transparent;
+
+/* 定义滚动条样式 */
+::-webkit-scrollbar {
+  width: $scrollbar-width;
+}
+
+/* 定义滑块样式 */
+::-webkit-scrollbar-thumb {
+  background-color: $scrollbar-color;
+  border-radius: $border-radius;
+}
+
+/* 定义滚动条两端的按钮样式 */
+::-webkit-scrollbar-button {
+  background-color: $transparent-bg;
+}
+
+/* 定义滚动条上端按钮样式 */
+::-webkit-scrollbar-button:start {
+  height: $scrollbar-width;
+  background-color: $transparent-bg;
+  border-radius: $border-radius 0 0 $border-radius;
+}
+
+/* 定义滚动条下端按钮样式 */
+::-webkit-scrollbar-button:end {
+  height: $scrollbar-width;
+  background-color: $transparent-bg;
+  border-radius: 0 $border-radius $border-radius 0;
+}
+
+/* 定义箭头样式 */
+::-webkit-scrollbar-thumb:vertical {
+  border: $scrollbar-width solid $transparent-bg;
+}
+
+/* 定义箭头上端样式 */
+::-webkit-scrollbar-thumb:vertical:before {
+  content: "";
+  display: block;
+  height: $scrollbar-width;
+  background-color: $arrow-color;
+  border-radius: $border-radius 0 0 $border-radius;
+}
+
+/* 定义箭头下端样式 */
+::-webkit-scrollbar-thumb:vertical:after {
+  content: "";
+  display: block;
+  height: $scrollbar-width;
+  background-color: $arrow-color;
+  border-radius: 0 $border-radius $border-radius 0;
+}
