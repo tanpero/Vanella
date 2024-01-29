@@ -30,7 +30,6 @@ export const run = (editorSelector: string,
   let updateListener = EditorView.updateListener.of(source => {
     if (source.docChanged) {
       viewer.innerHTML = markdownProcessor(source.state.doc.toString())
-      setTimeout(justifyBreaklines, 100)
     }
   })
 

@@ -31,7 +31,6 @@ body {
 .container {
   display: flex;
   width: 100vw;
-  overflow-x: hidden;
 }
 
 .left-pane, .right-pane {
@@ -46,17 +45,18 @@ body {
 .right-pane {
   overflow-y: auto;
   min-width: 50%;
-  width: 200px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  word-break: break-all;
+  max-width: 50%;
   font-size: 1em; // 正文字号
-  line-height: 1.618; // 行高
-  margin: 1.618em; // 页边距
-  padding-right: 1em;
+  line-height: 1.6; // 行高
+  margin: 1.6em; // 页边距
+  padding-right: 4em;
+  box-sizing: border-box;
   p {
     text-indent: 2em; // 首行缩进
     margin-bottom: 1.326em; // 段间距
+    white-space: break-spaces;
+    word-wrap: break-word;
+    word-break: break-all;
   }
 }
 
@@ -250,5 +250,4 @@ blockquote {
 
 p {
   text-align: justify; 
-  text-justify: inter-ideographic;
 }
