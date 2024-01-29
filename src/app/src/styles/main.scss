@@ -14,7 +14,7 @@ body, h1, h2, h3, p, ul, li {
 }
 
 body {  
-  background-color: rgba(0, 0, 0, 0.75); /* 深色模式样式 */
+  background-color: rgba(0, 0, 0, 0.75);
   color: #ffffff;
   overflow-x: hidden;
   border: 1px solid transparent;
@@ -40,12 +40,20 @@ body {
 
 .left-pane {
   min-width: 50%;
+  overflow-y: auto;
 }
 
 .right-pane {
+  overflow-y: auto;
+  min-width: 50%;
+  width: 200px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
   font-size: 1em; // 正文字号
   line-height: 1.618; // 行高
   margin: 1.618em; // 页边距
+  padding-right: 1em;
   p {
     text-indent: 2em; // 首行缩进
     margin-bottom: 1.326em; // 段间距
@@ -56,7 +64,6 @@ body {
   font-family: "Kust";
   display: block;
   position: fixed;
-  height: 20px;
   width: calc(100% - 2px);
   background: transparent;
   padding: 4px;
@@ -64,8 +71,8 @@ body {
 }
 
 #title-bar #drag-region {
-  width: 100%;
-  height: 100%;
+  width: 100%;  
+  height: 20px;
   -webkit-app-region: drag;
 }
 
@@ -98,9 +105,8 @@ body {
 
 #main {
   -webkit-app-region: no-drag;
-  height: calc(100% - 32px);
+  height: calc(100% - 20px);
   margin-top: 20px;
-  overflow-y: auto;
 }
 
 .bar-button {

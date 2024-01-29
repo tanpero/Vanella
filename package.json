@@ -25,6 +25,7 @@
     "file-loader": "^6.2.0",
     "fs-extra": "^11.2.0",
     "highlight.js": "^11.9.0",
+    "hyphenation.en-us": "^0.2.1",
     "mdast-util-toc": "^7.0.0",
     "rehype-highlight": "^7.0.0",
     "rehype-inline": "^2.0.0",
@@ -39,6 +40,7 @@
     "remark-toc": "^9.0.0",
     "remark-unwrap-images": "^4.0.0",
     "sass": "^1.70.0",
+    "tex-linebreak": "^0.7.0",
     "typescript": "^5.3.3"
   },
   "dependencies": {
@@ -52,6 +54,7 @@
     "codemirror": "^6.0.1",
     "electron-drag": "^2.0.0",
     "highlight.js": "^11.9.0",
+    "hyphenation.en-us": "^0.2.1",
     "mdast-util-toc": "^7.0.0",
     "rehype-document": "^7.0.3",
     "rehype-format": "^5.0.0",
@@ -78,6 +81,7 @@
     "retext-english": "^5.0.0",
     "retext-indefinite-article": "^5.0.0",
     "retext-stringify": "^4.0.0",
+    "tex-linebreak": "^0.7.0",
     "to-vfile": "^8.0.0",
     "unified": "^11.0.4",
     "unified-stream": "^3.0.0",

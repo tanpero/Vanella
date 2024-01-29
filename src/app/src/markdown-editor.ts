@@ -11,6 +11,8 @@ import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 
 import placeholders from './placeholder-decoration'
 
+import justifyBreaklines from './justify-breaklines'
+
 declare let editorView: EditorView
 
 
@@ -28,6 +30,7 @@ export const run = (editorSelector: string,
   let updateListener = EditorView.updateListener.of(source => {
     if (source.docChanged) {
       viewer.innerHTML = markdownProcessor(source.state.doc.toString())
+      setTimeout(justifyBreaklines, 100)
     }
   })
 
@@ -40,7 +43,10 @@ export const run = (editorSelector: string,
       history(),
       markdown({
         base: markdownLanguage,
-			  codeLanguages: languages
+			  codeLanguages: languages,
+        extensions: [
+
+        ],
       }),
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       syntaxHighlighting(defaultHighlightStyle),
