@@ -27,7 +27,7 @@ export default (depth: 1 | 2 | 3 | 4 | 5 | 6) => {
         children: hasHeadings ? generatedToc.children : [],
         data: {
           hProperties: {
-            class: 'toc',
+            name: 'table-of-contents',
           },
         },
       }

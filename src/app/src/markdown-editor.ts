@@ -15,6 +15,13 @@ import justifyBreaklines from './justify-breaklines'
 
 declare let editorView: EditorView
 
+const theme = EditorView.theme({
+  'span.cm-header-1, span.cm-formatting-header-1': {
+    color: 'white', // 设置 # 的颜色为白色
+
+  },
+})
+
 
 type MarkdownProcessor = (markdown: string) => string
 
@@ -49,6 +56,7 @@ export const run = (editorSelector: string,
       }),
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       syntaxHighlighting(defaultHighlightStyle),
+      theme,
       EditorView.lineWrapping,
       updateListener,
     ],

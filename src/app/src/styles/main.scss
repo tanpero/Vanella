@@ -284,3 +284,47 @@ blockquote {
 p {
   text-align: justify; 
 }
+
+$indentation: 20px; // 你可以根据需要调整缩进大小
+
+ul[name='user-content-table-of-contents'] {
+  p {
+    text-indent: 0;
+    margin: 0;
+    padding: 0;
+  }
+  list-style-type: none;
+  padding-left: $indentation;
+  margin: 0;
+
+  & > li {
+    position: relative;
+    padding-left: 1em;
+    margin-bottom: 0.3em;
+
+    &::before {
+      display: none;
+    }
+
+    // Nested ul styles
+    ul {
+      list-style-type: none;
+      padding-left: $indentation;
+
+      & > li {
+        position: relative;
+        padding-left: 1em;
+        margin-bottom: 0.3em;
+
+        &::before {
+          display: none;
+        }
+
+        ul {
+          padding-left: $indentation * 2;
+        }
+      }
+    }
+  }
+}
+
