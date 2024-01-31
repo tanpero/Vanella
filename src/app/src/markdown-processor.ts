@@ -17,6 +17,7 @@ import rehypeSanitize from 'rehype-sanitize'
 import rehypeMathjax from 'rehype-mathjax'
 
 import generateTOC from './table-of-contents-generator'
+import languagePlugin from './writing-system-generator'
 
 const processor = unified()
   .use(remarkParse)

@@ -25,7 +25,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 var import_electron = require("electron");
 var import_path = require("path");
 var fs = __toESM(require("fs"));
-import_electron.app.setAsDefaultProtocolClient("vanella", process.execPath, ["--open-file"]);
 var main = () => {
   onReady();
   appListens();
@@ -34,7 +33,6 @@ var onReady = () => {
   import_electron.app.whenReady().then(() => {
     const mainWindow = createWindow();
     mainWindowListens(mainWindow);
-    mainWindow.center();
   });
 };
 var mainWindowListens = (mainWindow) => {

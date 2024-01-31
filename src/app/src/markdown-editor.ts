@@ -54,6 +54,8 @@ export const run = (editorSelector: string,
     ],
     parent: editor as HTMLDivElement,
   })
+
+  editor.focus()
 }
 
 export const upload = (content: string) => {
