@@ -17,8 +17,10 @@ declare let editorView: EditorView
 
 const theme = EditorView.theme({
   'span.cm-header-1, span.cm-formatting-header-1': {
-    color: 'white', // 设置 # 的颜色为白色
-
+    color: 'white',
+  },
+  "&.cm-focused .cm-cursor": {
+    borderLeftColor: "lightyellow",
   },
 })
 
@@ -63,7 +65,7 @@ export const run = (editorSelector: string,
     parent: editor as HTMLDivElement,
   })
 
-  editor.focus()
+  editorView.focus()
 }
 
 export const upload = (content: string) => {

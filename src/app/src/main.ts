@@ -32,14 +32,15 @@ run('#editor', '#viewer', (markdown: string) => {
 
 vanella.bindFileManipulation({
   'to-check-if-be-saved': () => {
+    let choice: boolean
     switch (stateManager.getStatus()) {
       case DocumentStatus.New:
-        if (download().trim() === '') {
+        if (download().trim() === '' || confirm(willClose)) {
           vanella.close()
         }
         break
       case DocumentStatus.UnsavedChanges:
-        let choice = confirm(willClose)
+        choice = confirm(willClose)
         if (choice) {
           vanella.close()
         }
