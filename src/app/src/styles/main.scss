@@ -30,9 +30,20 @@ body {
   line-height: 1.5;
 }
 
+#application {  
+  display: block;
+  position: fixed;
+  height: auto;
+  width: auto;
+  overflow-y: auto;
+}
+
 .container {
   display: flex;
   width: 100vw;
+  -webkit-app-region: no-drag;
+  height: calc(100vh - 20px) !important;
+  margin-top: 20px;
 }
 
 .left-pane, .right-pane {
@@ -41,11 +52,11 @@ body {
 
 .left-pane {
   min-width: 50%;
-  overflow-y: auto;
+  overflow-y: scroll;
 }
 
 .right-pane {
-  overflow-y: auto;
+  overflow-y: scroll;
   min-width: 50%;
   max-width: 50%;
   font-size: 1em; // 正文字号
@@ -103,12 +114,6 @@ body {
 }
 #close-button {
   grid-column: 3;
-}
-
-#main {
-  -webkit-app-region: no-drag;
-  height: calc(100% - 20px);
-  margin-top: 20px;
 }
 
 .bar-button {
@@ -274,12 +279,53 @@ ol {
 }
 
 blockquote {
-  border-left: 2px solid #3498db;
-  padding-left: 20px;
-  margin: 0 0 20px;
-  font-style: italic;
-  color: rgb(187, 255, 162);
+  display: block;
+  clear: both;
+  font-size: 1em;
+  font-style: normal;
+  line-height: 1.8;
+  text-indent: 0;
+  border: none;
+  color: rgb(193, 213, 185);
+  margin-block-start: 1em;
+  margin-block-end: 1em;
+  margin-inline-start: 40px;
+  margin-inline-end: 40px;
+  position: relative;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
+
+blockquote:before {
+  content: "\201c";
+  left: 0;
+  top: 0;
+  transform: translateY(-100%) translateX(-100%);
+  color: #e0e0e0;
+  font-size: 4em;
+  font-family: Arial, serif;
+  line-height: 1em;
+  font-weight: 700;
+  position: absolute;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+blockquote:after {
+  content: "\201d";
+  right: 0;
+  bottom: 0;
+  transform: translateY(100%) translateX(100%);
+  color: #e0e0e0;
+  font-size: 4em;
+  font-family: Arial, serif;
+  line-height: 1em;
+  font-weight: 700;
+  position: absolute;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
 
 p {
   text-align: justify; 
