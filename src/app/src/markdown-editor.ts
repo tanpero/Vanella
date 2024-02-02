@@ -10,10 +10,8 @@ import { languages } from '@codemirror/language-data'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 
 import placeholders from './placeholder-decoration'
-
-import justifyBreaklines from './justify-breaklines'
-
-import mermaid from 'mermaid'
+import { getTreeData } from './scrolling-observer'
+import { computedPosition } from './compute-position'
 
 declare let editorView: EditorView
 
@@ -40,7 +38,6 @@ export const run = (editorSelector: string,
   
   let updateListener = EditorView.updateListener.of(source => {
     if (source.docChanged) {
-      mermaid.initialize({})
       viewer.innerHTML = markdownProcessor(source.state.doc.toString())
     }
   })
@@ -59,7 +56,26 @@ export const run = (editorSelector: string,
 
         ],
       }),
+
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+
+      EditorView.domEventHandlers({
+
+        scroll(event, view) {
+          const self = editor
+
+          if (!self.matches(":hover")) return
+
+          const scroll = (event?.target as HTMLElement).scrollTop
+
+          console.log("When scrolling: ", getTreeData())
+          console.log(
+            computedPosition(editorView, getTreeData())
+          );
+        }
+      }),
+
+
       syntaxHighlighting(defaultHighlightStyle),
       theme,
       EditorView.lineWrapping,

@@ -16,10 +16,7 @@ import rehypeSanitize from 'rehype-sanitize'
 import rehypeMathjax from 'rehype-mathjax'
 
 import generateTOC from './table-of-contents-generator'
-
-import { Node as Node } from 'unified/lib'
-
-let treeData: Node
+import { scrollingObserver } from './scrolling-observer'
 
 const processor = unified()
   .use(remarkParse)
@@ -35,12 +32,7 @@ const processor = unified()
   .use(rehypeSanitize)
   .use(rehypeHighlight)
   .use(rehypeMathjax)
-  .use(
-    () => (tree, file) => {
-      console.log(tree)
-      treeData = tree
-    }
-  )
+  .use(scrollingObserver)
   .use(rehypeFormat)
   .use(rehypeStringify)
 
