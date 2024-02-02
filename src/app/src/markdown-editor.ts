@@ -13,6 +13,8 @@ import placeholders from './placeholder-decoration'
 
 import justifyBreaklines from './justify-breaklines'
 
+import mermaid from 'mermaid'
+
 declare let editorView: EditorView
 
 const theme = EditorView.theme({
@@ -38,6 +40,7 @@ export const run = (editorSelector: string,
   
   let updateListener = EditorView.updateListener.of(source => {
     if (source.docChanged) {
+      mermaid.initialize({})
       viewer.innerHTML = markdownProcessor(source.state.doc.toString())
     }
   })

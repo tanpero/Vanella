@@ -2,7 +2,6 @@ import { unified } from 'unified'
 
 import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
-import remarkToc from 'remark-toc'
 import remarkMath from 'remark-math'
 import remarkImages from 'remark-images'
 import remarkUnwrapImages from 'remark-unwrap-images'
@@ -17,7 +16,10 @@ import rehypeSanitize from 'rehype-sanitize'
 import rehypeMathjax from 'rehype-mathjax'
 
 import generateTOC from './table-of-contents-generator'
-import languagePlugin from './writing-system-generator'
+
+import { Node as Node } from 'unified/lib'
+
+let treeData: Node
 
 const processor = unified()
   .use(remarkParse)
@@ -28,11 +30,17 @@ const processor = unified()
   .use(generateTOC(6))
 
   .use(remarkRehype)
-  .use(rehypeDocument, {title: ''})
+  .use(rehypeDocument, { title: '' })
   .use(rehypeSlug)
   .use(rehypeSanitize)
   .use(rehypeHighlight)
   .use(rehypeMathjax)
+  .use(
+    () => (tree, file) => {
+      console.log(tree)
+      treeData = tree
+    }
+  )
   .use(rehypeFormat)
   .use(rehypeStringify)
 

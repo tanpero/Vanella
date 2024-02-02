@@ -1,0 +1,75 @@
+// 定义边框和间距变量
+$table-outer-border: 3px solid #fff;
+$table-inner-border: 1px solid #fff;
+$cell-padding: 10px;
+$nested-element-border: 1px solid #fff;
+$nested-element-padding: 5px;
+
+// 定义表头样式
+$th-background-color: #33333385; // 使用自定义颜色
+$th-color: #fff;
+
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: $table-outer-border;
+
+  th, td {    
+    border: $table-inner-border; // 里面的边框 1px 粗
+    padding: $cell-padding;
+    vertical-align: middle;
+    background-color: transparent; // 透明背景
+    color: #fff;
+  }
+
+  th {
+    background-color: $th-background-color;
+    color: $th-color;
+  }
+
+  tbody {
+    tr {
+      & > * {
+        border: $nested-element-border;
+        padding: $nested-element-padding;
+        background-color: transparent; // 透明背景
+      }
+
+      // 处理可能嵌套的其他元素
+      table, ul, ol, blockquote, img, svg {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      // 样式化嵌套表格
+      table {
+        border: $nested-element-border;
+        margin-top: $nested-element-padding;
+        margin-bottom: $nested-element-padding;
+      }
+
+      // 样式化嵌套列表
+      ul, ol {
+        list-style: none;
+        padding-left: 10px;
+        margin-top: $nested-element-padding;
+        margin-bottom: $nested-element-padding;
+      }
+
+      // 样式化块级引用
+      blockquote {
+        border-left: 4px solid #333; // 使用自定义颜色
+        padding: 10px;
+        margin: $nested-element-padding 0;
+      }
+
+      // 样式化图片和SVG
+      img, svg {
+        max-width: 100%;
+        height: auto;
+      }
+    }
+  }
+}

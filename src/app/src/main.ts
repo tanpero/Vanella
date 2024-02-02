@@ -27,7 +27,12 @@ const updateTitle = () => {
 run('#editor', '#viewer', (markdown: string) => {
   updateTitle()
   stateManager.modify()
-  return String(processor.processSync(markdown))
+  let html = ""
+  processor.process(markdown, (err, file) => {
+    if (err) throw err
+    html = String(file)
+  })
+  return html
 })
 
 vanella.bindFileManipulation({
