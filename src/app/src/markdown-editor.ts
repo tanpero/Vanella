@@ -11,7 +11,7 @@ import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 
 import placeholders from './placeholder-decoration'
 import { getTreeData } from './scrolling-observer'
-import { computedPosition } from './compute-position'
+import { computedPosition, getEditorElementList, getViewerElementList } from './compute-position'
 
 declare let editorView: EditorView
 
@@ -25,16 +25,20 @@ const theme = EditorView.theme({
 })
 
 
+let scrollElementIndex: number
+
 type MarkdownProcessor = (markdown: string) => string
 
 export const run = (editorSelector: string,
                     viewerSelector: string,
+                    viewerContainerSelector: string,
                     markdownProcessor: MarkdownProcessor
                   ) => {
   const doc = ''
   
-  const viewer = document.querySelector(viewerSelector) as HTMLDivElement
   const editor = document.querySelector(editorSelector) as HTMLDivElement
+  const viewer = document.querySelector(viewerSelector) as HTMLDivElement
+  const viewerContainer = document.querySelector(viewerContainerSelector) as HTMLDivElement
   
   let updateListener = EditorView.updateListener.of(source => {
     if (source.docChanged) {
@@ -60,21 +64,28 @@ export const run = (editorSelector: string,
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
 
       EditorView.domEventHandlers({
-
         scroll(event, view) {
           const self = editor
 
-          if (!self.matches(":hover")) return
+          if (!self.matches(':hover')) return
 
-          const scroll = (event?.target as HTMLElement).scrollTop
+          const scrollTop = (event?.target as HTMLElement).scrollTop
 
-          console.log("When scrolling: ", getTreeData())
-          console.log(
-            computedPosition(editorView, getTreeData())
-          );
+          computedPosition(view, viewer, getTreeData())
+
+          getEditorElementList().forEach((value, index) => {
+            if (scrollTop < value) {
+              scrollElementIndex = index - 1
+              return false
+            }
+          })
+
+          if (scrollElementIndex > 0) {
+            viewerContainer.scrollTop = getViewerElementList()[scrollElementIndex]
+          }
+
         }
       }),
-
 
       syntaxHighlighting(defaultHighlightStyle),
       theme,

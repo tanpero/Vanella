@@ -24,10 +24,10 @@ const updateTitle = () => {
   title.innerText += (status === DocumentStatus.Saved ? "📖" : "💡" )
 }
 
-run('#editor', '#viewer', (markdown: string) => {
+run('#editor', '#viewer', '#main > div.right-pane', (markdown: string) => {
   updateTitle()
   stateManager.modify()
-  let html = ""
+  let html = ''
   processor.process(markdown, (err, file) => {
     if (err) throw err
     html = String(file)

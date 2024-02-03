@@ -1,29 +1,28 @@
 import { EditorView } from "codemirror"
 import { Node } from "unified/lib"
-import { visitChildren } from 'unist-util-visit-children'
-import { Parent } from "unist-util-visit-children/lib"
 
-export const computedPosition = (editor: EditorView, treeData: Node) => {
-  visitChildren(
-    node => {
-      if (node.type !== 'element') return
-      const line = node?.position?.start.line as number
-      const lineStart = editor.state.doc.line(line).from as number
-      const offsetTop = editor.coordsAtPos(lineStart, 1)?.top
+let editorElementList: number[]
+let viewerElementList: number[]
 
-      let firstChild: any
-      let count = 0
-      visitChildren(
-        childNode => {
-          if (count === 0)
-            firstChild = childNode
-          count += 1
-        }
-      )(node as Parent)
+export const computedPosition = (editor: EditorView, viewer: HTMLElement, treeData: Node) => {
 
-      console.log(firstChild.data, offsetTop)
+  let viewerChildNodes = viewer.childNodes
+  editorElementList = []
+  viewerElementList = []
+
+  treeData.children.forEach((child, index) => {
+    if (child.type !== 'element' || !child.position) return
+    
+    const line = child.position.start.line
+    const lineStart = editor.state.doc.line(line).from as number
+    const offsetTop = editor.coordsAtPos(lineStart - 1, 1)?.top
+    if (child.children[0]?.value && offsetTop) {
+      editorElementList.push(offsetTop)
+      viewerElementList.push(viewerChildNodes[index].offsetTop)
     }
-  )
-  (treeData as Parent)
+  })
 }
+
+export const getEditorElementList = () => editorElementList
+export const getViewerElementList = () => viewerElementList
   

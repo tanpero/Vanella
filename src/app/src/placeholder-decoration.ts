@@ -1,7 +1,7 @@
 import { Decoration, EditorView, MatchDecorator, ViewPlugin, WidgetType } from "@codemirror/view"
 
 const placeholderMatcher = new MatchDecorator({
-  regexp: /^```*(\w+)$/g,
+  regexp: /^```* *(\w+)$/g,
   decoration: match => Decoration.replace({
     widget: new PlaceholderWidget(match[1]),
   }),
