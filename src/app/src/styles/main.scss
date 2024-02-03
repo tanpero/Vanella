@@ -57,6 +57,7 @@ body {
 
 .right-pane {
   overflow-y: scroll;
+  overflow-x: hidden;
   min-width: 50%;
   max-width: 50%;
   font-size: 1em; // 正文字号

@@ -30,15 +30,26 @@ let scrollElementIndex: number
 type MarkdownProcessor = (markdown: string) => string
 
 export const run = (editorSelector: string,
+                    editorContainerSelector: string,
                     viewerSelector: string,
                     viewerContainerSelector: string,
                     markdownProcessor: MarkdownProcessor
                   ) => {
   const doc = ''
+  let currentArea = ''
   
   const editor = document.querySelector(editorSelector) as HTMLDivElement
   const viewer = document.querySelector(viewerSelector) as HTMLDivElement
+  const editorContainer = document.querySelector(editorContainerSelector) as HTMLDivElement
   const viewerContainer = document.querySelector(viewerContainerSelector) as HTMLDivElement
+
+  editorContainer.addEventListener('mouseenter', () => {
+    currentArea = 'editor'
+  })
+
+  viewerContainer.addEventListener('mouseenter', () => {
+    currentArea = 'viewer'
+  })
   
   let updateListener = EditorView.updateListener.of(source => {
     if (source.docChanged) {
@@ -70,18 +81,44 @@ export const run = (editorSelector: string,
           if (!self.matches(':hover')) return
 
           const scrollTop = (event?.target as HTMLElement).scrollTop
+          const scrollHeight = (event?.target as HTMLElement).scrollHeight
+          const clientHeight = (event?.target as HTMLElement).clientHeight
 
           computedPosition(view, viewer, getTreeData())
 
-          getEditorElementList().forEach((value, index) => {
+          
+          const viewerElementList = getViewerElementList()
+          const editorElementList = getEditorElementList()
+
+          editorElementList.forEach((value, index) => {
             if (scrollTop < value) {
               scrollElementIndex = index - 1
               return false
             }
           })
 
-          if (scrollElementIndex > 0) {
-            viewerContainer.scrollTop = getViewerElementList()[scrollElementIndex]
+          // 编辑区域已经滚动到底部，那么预览区域也直接滚动到底部
+          if (scrollTop >= scrollHeight - clientHeight) {
+            viewerContainer.scrollTop =
+              viewerContainer.scrollHeight - viewerContainer.clientHeight
+            return
+          }
+
+          if (scrollElementIndex >= 0) {
+
+            // 编辑区域滚动距离和当前滚动到的节点的 offsetTop 的差值与当前节点高度的比值
+            let ratio =
+            (scrollTop - editorElementList[scrollElementIndex]) /
+            (editorElementList[scrollElementIndex + 1] -
+              editorElementList[scrollElementIndex])
+
+            // 根据比值相等计算出预览区域应该滚动到的位置
+            const position = ratio *
+              (viewerElementList[scrollElementIndex + 1] -
+                viewerElementList[scrollElementIndex]) +
+                  viewerElementList[scrollElementIndex]
+            position && (viewerContainer.scrollTop = position)
+              
           }
 
         }
@@ -94,6 +131,48 @@ export const run = (editorSelector: string,
     ],
     parent: editor as HTMLDivElement,
   })
+
+  viewerContainer.addEventListener('scroll', event => {
+
+    if (currentArea !== 'viewer') return
+
+    computedPosition(editorView, viewer, getTreeData())
+    
+    const viewerElementList = getViewerElementList()
+    const editorElementList = getEditorElementList()
+
+    let viewerScrollTop = viewerContainer.scrollTop
+
+    viewerElementList.forEach((value, index) => {
+      if (viewerScrollTop < value) {
+        scrollElementIndex = index - 1
+        return false
+      }
+    })
+
+    // 已经滚动到底部
+    if (
+      viewerScrollTop >=
+      viewerContainer.scrollHeight - viewerContainer.clientHeight
+    ) {
+      editorContainer.scrollTo(0, editorContainer.offsetHeight - editorContainer.clientHeight)
+      return
+    }
+    if (scrollElementIndex >= 0) {
+      let ratio =
+        (viewerScrollTop - viewerElementList[scrollElementIndex]) /
+        (viewerElementList[scrollElementIndex + 1] -
+          viewerElementList[scrollElementIndex])
+      let editorScrollTop =
+        ratio *
+          (editorElementList[scrollElementIndex + 1] -
+            editorElementList[scrollElementIndex]) +
+        editorElementList[scrollElementIndex]
+        editorScrollTop && editorContainer.scrollTo(0, editorScrollTop)
+    }
+
+  })
+
 
   editorView.focus()
 }
