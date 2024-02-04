@@ -86,6 +86,10 @@ export const run = (editorSelector: string,
 
           computedPosition(view, viewer, getTreeData())
 
+          if (scrollTop === 0) {
+            viewerContainer.scrollTop = 0
+            return
+          }
           
           const viewerElementList = getViewerElementList()
           const editorElementList = getEditorElementList()
@@ -135,6 +139,11 @@ export const run = (editorSelector: string,
   viewerContainer.addEventListener('scroll', event => {
 
     if (currentArea !== 'viewer') return
+
+    if (viewerContainer.scrollTop === 0) {
+      editorContainer.scrollTop = 0
+      return
+    }
 
     computedPosition(editorView, viewer, getTreeData())
     

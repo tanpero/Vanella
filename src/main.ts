@@ -1,4 +1,4 @@
-import { BrowserWindow, app, ipcMain, dialog, shell } from 'electron'
+import { BrowserWindow, app, ipcMain, dialog, shell, ipcRenderer } from 'electron'
 import { join, dirname } from 'path'
 import * as fs from 'fs'
 
@@ -15,11 +15,12 @@ const onReady = () => {
 }
 
 const mainWindowListens = (mainWindow: BrowserWindow) => {
-    ipcMain.on("minimize", () => mainWindow.minimize())
-    ipcMain.on("maximize", () => mainWindow.maximize())
-    ipcMain.on("unmaximize", () => mainWindow.unmaximize())    
-    ipcMain.on("close", () => mainWindow.close())
-    ipcMain.on("to-close", event => event.reply("to-check-if-be-saved"))
+
+    ipcMain.on('minimize', () => mainWindow.minimize())
+    ipcMain.on('maximize', () => mainWindow.maximize())
+    ipcMain.on('unmaximize', () => mainWindow.unmaximize())    
+    ipcMain.on('close', () => mainWindow.close())
+    ipcMain.on('to-close', event => event.reply('to-check-if-be-saved'))
 
     ipcMain.on('open-file-dialog', async (event) => {
         try {

@@ -1,7 +1,7 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
 contextBridge.exposeInMainWorld('vanella', {
-    
+
     minimize() { ipcRenderer.send("minimize") },
     maximize() { ipcRenderer.send("maximize") },
     unmaximize() { ipcRenderer.send("unmaximize") },
