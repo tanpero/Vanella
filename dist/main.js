@@ -165,7 +165,8 @@ var createWindow = () => {
     webPreferences: {
       webSecurity: false,
       nodeIntegration: true,
-      preload: (0, import_path.join)(__dirname, "preload.js")
+      preload: (0, import_path.join)(__dirname, "preload.js"),
+      experimentalFeatures: true
     }
   });
   const path = (0, import_path.join)(__dirname, "app", "index.html");

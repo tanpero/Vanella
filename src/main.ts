@@ -116,7 +116,8 @@ const createWindow = () => {
         webPreferences: {
             webSecurity: false,
             nodeIntegration: true,
-            preload: join(__dirname, 'preload.js')
+            preload: join(__dirname, 'preload.js'),
+            experimentalFeatures: true,
         }
     })
     const path = join(__dirname, 'app', 'index.html')
