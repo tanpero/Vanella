@@ -1,6 +1,7 @@
 import { BrowserWindow, app, ipcMain, dialog, shell, ipcRenderer } from 'electron'
-import { join, dirname } from 'path'
+import { join, dirname, basename, extname } from 'path'
 import * as fs from 'fs'
+import { generateHTML } from './html-generator'
 
 const main = () => {
     onReady()
@@ -89,6 +90,17 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
         } catch (error) {
             console.error('Error saving file as:', error)
             event.reply('save-as-file-dialog-reply', { error: error.message })
+        }
+    })
+
+    ipcMain.on('to-generate-html', async (event, { filePath, contentToExport }) => {
+        const baseName = basename(filePath, extname(filePath))
+        try {
+            await fs.promises.writeFile(
+                join(dirname(filePath), baseName + '.html'),
+                generateHTML(baseName, contentToExport, true))
+        } catch (error) {
+            console.error('Error exporting HTML:', error)
         }
     })
 }

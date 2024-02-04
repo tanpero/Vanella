@@ -26,6 +26,8 @@ const theme = EditorView.theme({
 
 let scrollElementIndex: number
 
+let htmlFragment: string
+
 type MarkdownProcessor = (markdown: string) => string
 
 export const run = (editorSelector: string,
@@ -52,7 +54,8 @@ export const run = (editorSelector: string,
   
   let updateListener = EditorView.updateListener.of(source => {
     if (source.docChanged) {
-      viewer.innerHTML = markdownProcessor(source.state.doc.toString())
+      htmlFragment = markdownProcessor(source.state.doc.toString())
+      viewer.innerHTML = htmlFragment
     }
   })
 
@@ -105,3 +108,5 @@ export const upload = (content: string) => {
 }
 
 export const download = () => editorView.state.doc.toString()
+
+export const exportHTML = () => htmlFragment

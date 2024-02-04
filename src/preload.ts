@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('vanella', {
         try {
             ipcRenderer.send('open-file-dialog')
         } catch (error) {
-            console.error('Error sending open-file-dialog:', error)
+            console.error('Error sending open-file-dialog: ', error)
         }
     },    
 
@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('vanella', {
             try {
                 ipcRenderer.send('save-file-dialog', contentToSave)
             } catch (error) {
-                console.error('Error sending save-file-dialog:', error)
+                console.error('Error sending save-file-dialog: ', error)
             }
         } else {
             ipcRenderer.send('save-file', {
@@ -37,7 +37,15 @@ contextBridge.exposeInMainWorld('vanella', {
         try {
             ipcRenderer.send('save-as-file-dialog', contentToSave)
         } catch (error) {
-            console.error('Error sending save-as-file-dialog:', error)
+            console.error('Error sending save-as-file-dialog: ', error)
+        }
+    },
+
+    async exportHTML(filePath, contentToExport ) {
+        try {
+            ipcRenderer.send('to-generate-html', { filePath, contentToExport })
+        } catch (error) {
+            console.error('Error generating html: ', error)
         }
     },
 

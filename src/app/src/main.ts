@@ -1,6 +1,7 @@
 import './styles/main.scss'
+import './styles/article.scss'
 import './title-bar-controllers'
-import { download, run, upload } from './markdown-editor'
+import { download, exportHTML, run, upload } from './markdown-editor'
 import processor from './markdown-processor'
 
 import 'highlight.js/styles/monokai.css'
@@ -128,4 +129,16 @@ shortcut.when('Ctrl Shift S').to(() => {
 
 shortcut.when('Ctrl W').to(() => {
   vanella.toClose()
+})
+
+shortcut.when('Ctrl P').to(() => {
+  switch (stateManager.getStatus()) {
+    case DocumentStatus.New:
+      confirm(willSave) && vanella.saveFile(download())
+      break
+    case DocumentStatus.UnsavedChanges:
+    case DocumentStatus.Saved:
+      vanella.exportHTML(stateManager.getFilePath(), exportHTML())
+      break
+  }
 })

@@ -1,0 +1,168 @@
+// 全局设置
+$indentation: 2em;
+
+p {
+  text-indent: $indentation;
+  margin-bottom: 1.326em; // 段间距
+  white-space: break-spaces;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+a {
+  text-decoration: underline;
+  color: rgb(20, 230, 146);
+
+  &:active, &:hover {
+    color: rgb(20, 202, 230);
+    @at-root {
+      #{selector-parse(&)} {
+        cursor: pointer;
+      }
+    }
+  }
+}
+
+img {
+  max-width: 80%;
+  max-height: 80%;      
+  margin: auto;
+  display: block;
+}
+
+// 定义 ul 样式
+ul {
+  list-style-type: none; // 隐藏默认的列表样式
+  padding-left: $indentation; // 左侧缩进
+  margin: 0; // 确保没有外边距
+  & > li {
+    position: relative; // 使 li 相对定位，以便容纳子级 ul
+    padding-left: 1em; // 左侧缩进，以容纳圆点或其他列表样式
+    margin-bottom: 0.5em; // 项目之间的间距
+    &::before {
+      content: '\2022'; // 使用圆点作为项目标记
+      position: absolute;
+      left: -1em; // 圆点与文字之间的距离
+    }
+  }
+}
+
+// 定义 ol 样式
+ol {
+  list-style-type: none;
+  counter-reset: li;
+  padding-left: $indentation;
+  margin: 0;
+  & > li {
+    position: relative;
+    padding-left: 1em;
+    margin-bottom: 0.5em;
+    &::before {
+      content: counter(li) ". ";
+      counter-increment: li;
+      position: absolute;
+      left: -2em;
+      width: $indentation;
+      text-align: right; // 右对齐编号
+    }
+  }
+}
+
+blockquote {
+  display: block;
+  clear: both;
+  font-size: 1em;
+  font-style: normal;
+  line-height: 1.8;
+  text-indent: 0;
+  border: none;
+  color: rgb(193, 213, 185);
+  margin-block-start: 1em;
+  margin-block-end: 1em;
+  margin-inline-start: 40px;
+  margin-inline-end: 40px;
+  position: relative;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+blockquote:before {
+  content: "\201c";
+  left: 0;
+  top: 0;
+  transform: translateY(-100%) translateX(-100%);
+  color: #e0e0e0;
+  font-size: 4em;
+  font-family: Arial, serif;
+  line-height: 1em;
+  font-weight: 700;
+  position: absolute;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+blockquote:after {
+  content: "\201d";
+  right: 0;
+  bottom: 0;
+  transform: translateY(100%) translateX(100%);
+  color: #e0e0e0;
+  font-size: 4em;
+  font-family: Arial, serif;
+  line-height: 1em;
+  font-weight: 700;
+  position: absolute;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+
+p {
+  text-align: justify; 
+}
+
+$indentation: 20px;
+
+ul[name='user-content-table-of-contents'] {
+  p {
+    text-indent: 0;
+    margin: 0;
+    padding: 0;
+  }
+  list-style-type: none;
+  padding-left: $indentation;
+  margin: 0;
+
+  & > li {
+    position: relative;
+    padding-left: 1em;
+    margin-bottom: 0.3em;
+
+    &::before {
+      display: none;
+    }
+
+    // Nested ul styles
+    ul {
+      list-style-type: none;
+      padding-left: $indentation;
+
+      & > li {
+        position: relative;
+        padding-left: 1em;
+        margin-bottom: 0.3em;
+
+        &::before {
+          display: none;
+        }
+
+        ul {
+          padding-left: $indentation * 2;
+        }
+      }
+    }
+  }
+}
+
+@import url(./table.scss);
+@import url(./code-block.scss);
