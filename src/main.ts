@@ -40,8 +40,10 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
     ipcMain.on('open-file', async (event, filePath) => {
         try {
             setTimeout(() => {
-                const html = generateDirectoryTreeView(generateCurrentDirectoryTree(filePath).children)
-                event.reply('generated-directory-tree-view', html)
+                generateCurrentDirectoryTree(filePath).then(tree => {
+                    const data = generateDirectoryTreeView(tree.children)
+                    event.reply('generated-directory-tree-view', data)
+                })                
             }, 1000)
             const fileContent = await fs.promises.readFile(filePath, 'utf-8')
             event.reply('file-content', filePath, dirname(filePath), fileContent)

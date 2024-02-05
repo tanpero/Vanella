@@ -17,6 +17,8 @@ let stateManager = new DocumentManager
 
 const title = document.getElementById('title') as HTMLElement
 
+const emptyTree = document.getElementById('empty-tree') as HTMLElement
+const loadingTree = document.getElementById('loading-tree') as HTMLElement
 const tree = document.getElementById('tree') as HTMLElement
 
 
@@ -63,6 +65,9 @@ vanella.bindFileManipulation({
     upload(content)
     stateManager.openDocument(filePath, dirPath)
     updateTitle()
+    emptyTree.style.display = 'none'
+    tree.style.display = 'none'
+    loadingTree.style.display = 'flex'
   },
   'file-saved': (filePath, dirPath) => {
     stateManager.saveDocumentAs(filePath, dirPath)
@@ -70,6 +75,8 @@ vanella.bindFileManipulation({
   },
   'file-save-error': info => alert(info),
   'generated-directory-tree-view': html => {
+    loadingTree.style.display = 'none'
+    tree.style.display = 'block'
     tree.innerHTML = html
   }
 })

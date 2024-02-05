@@ -69,42 +69,65 @@ function isHidden(filePath) {
   const stats = fs.statSync(filePath);
   return (stats.mode & 511) === 0;
 }
+var availableExt = ["md", "markdown", "txt"];
+function isAvailableFile(filePath) {
+  return availableExt.includes(path.extname(filePath.toLocaleLowerCase()));
+}
 var generateDirectoryTree = (directoryPath, parentId = null) => {
-  const contents = fs.readdirSync(directoryPath);
-  let fileCount = 0;
-  const children = contents.filter((content) => !content.startsWith(".") && !isHidden(path.join(directoryPath, content))).map((content, index) => {
-    const fullPath = path.join(directoryPath, content);
-    const stats = fs.statSync(fullPath);
-    const node = {
-      id: index + 1,
-      name: content,
-      parentId,
-      fileCount: 0
-    };
-    if (stats.isDirectory()) {
-      const subTree = generateDirectoryTree(fullPath, node.id);
-      node.children = subTree.children;
-      node.fileCount = subTree.fileCount;
-    } else {
-      node.fileCount = 1;
-      fileCount++;
+  return new Promise(async (resolve, reject) => {
+    try {
+      const contents = fs.readdirSync(directoryPath);
+      let fileCount = 0;
+      const children = [];
+      const tasks = contents.filter(async (content) => {
+        if (content.startsWith(".") || isHidden(path.join(directoryPath, content)))
+          return false;
+        const fullPath = path.join(directoryPath, content);
+        const stats = await fs.statSync(fullPath);
+        if (stats.isDirectory())
+          return true;
+        return isAvailableFile(content);
+      }).map(async (content, index) => {
+        const fullPath = path.join(directoryPath, content);
+        const stats = await fs.statSync(fullPath);
+        const node = {
+          id: index + 1,
+          name: content,
+          parentId,
+          fileCount: 0
+        };
+        if (stats.isDirectory()) {
+          const subTree = await generateDirectoryTree(fullPath, node.id);
+          node.children = subTree.children;
+          node.fileCount = subTree.fileCount;
+        } else {
+          node.fileCount = 1;
+          fileCount++;
+        }
+        return node;
+      });
+      for (const task of tasks) {
+        children.push(await task);
+      }
+      const sortedChildren = children.sort((a, b) => {
+        if (a.children && !b.children)
+          return -1;
+        if (!a.children && b.children)
+          return 1;
+        return a.name.localeCompare(b.name);
+      });
+      const tree = {
+        id: parentId !== null ? parentId : 1,
+        name: path.basename(directoryPath),
+        parentId,
+        fileCount,
+        children
+      };
+      resolve(tree);
+    } catch (error) {
+      reject(error);
     }
-    return node;
-  }).sort((a, b) => {
-    if (a.children && !b.children)
-      return -1;
-    if (!a.children && b.children)
-      return 1;
-    return a.name.localeCompare(b.name);
   });
-  const tree = {
-    id: parentId !== null ? parentId : 1,
-    name: path.basename(directoryPath),
-    parentId,
-    fileCount,
-    children
-  };
-  return tree;
 };
 var generateDirectoryTreeView = (childs) => {
   let html = "";
@@ -118,7 +141,7 @@ var generateDirectoryTreeView = (childs) => {
   });
   return html;
 };
-var generateCurrentDirectoryTree = (filePath) => generateDirectoryTree(path.dirname(filePath));
+var generateCurrentDirectoryTree = async (filePath) => await generateDirectoryTree(path.dirname(filePath));
 
 // src/main.ts
 var main = () => {
@@ -152,8 +175,10 @@ var mainWindowListens = (mainWindow) => {
   import_electron.ipcMain.on("open-file", async (event, filePath) => {
     try {
       setTimeout(() => {
-        const html = generateDirectoryTreeView(generateCurrentDirectoryTree(filePath).children);
-        event.reply("generated-directory-tree-view", html);
+        generateCurrentDirectoryTree(filePath).then((tree) => {
+          const data = generateDirectoryTreeView(tree.children);
+          event.reply("generated-directory-tree-view", data);
+        });
       }, 1e3);
       const fileContent = await fs2.promises.readFile(filePath, "utf-8");
       event.reply("file-content", filePath, (0, import_path.dirname)(filePath), fileContent);
