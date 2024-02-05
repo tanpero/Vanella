@@ -2,6 +2,7 @@ import { BrowserWindow, app, ipcMain, dialog, shell, ipcRenderer } from 'electro
 import { join, dirname, basename, extname } from 'path'
 import * as fs from 'fs'
 import { generateHTML } from './html-generator'
+import { generateCurrentDirectoryTree, generateDirectoryTreeView } from './directory-tree'
 
 const main = () => {
     onReady()
@@ -38,6 +39,10 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
     
     ipcMain.on('open-file', async (event, filePath) => {
         try {
+            setTimeout(() => {
+                const html = generateDirectoryTreeView(generateCurrentDirectoryTree(filePath).children)
+                event.reply('generated-directory-tree-view', html)
+            }, 1000)
             const fileContent = await fs.promises.readFile(filePath, 'utf-8')
             event.reply('file-content', filePath, dirname(filePath), fileContent)
         } catch (error) {

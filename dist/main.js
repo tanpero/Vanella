@@ -24,7 +24,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // src/main.ts
 var import_electron = require("electron");
 var import_path = require("path");
-var fs = __toESM(require("fs"));
+var fs2 = __toESM(require("fs"));
 
 // src/html-generator.ts
 var generateHTML = (title, input, withStyle = false) => {
@@ -62,6 +62,64 @@ var insertStyle = () => {
   </style>`;
 };
 
+// src/directory-tree.ts
+var fs = __toESM(require("fs"));
+var path = __toESM(require("path"));
+function isHidden(filePath) {
+  const stats = fs.statSync(filePath);
+  return (stats.mode & 511) === 0;
+}
+var generateDirectoryTree = (directoryPath, parentId = null) => {
+  const contents = fs.readdirSync(directoryPath);
+  let fileCount = 0;
+  const children = contents.filter((content) => !content.startsWith(".") && !isHidden(path.join(directoryPath, content))).map((content, index) => {
+    const fullPath = path.join(directoryPath, content);
+    const stats = fs.statSync(fullPath);
+    const node = {
+      id: index + 1,
+      name: content,
+      parentId,
+      fileCount: 0
+    };
+    if (stats.isDirectory()) {
+      const subTree = generateDirectoryTree(fullPath, node.id);
+      node.children = subTree.children;
+      node.fileCount = subTree.fileCount;
+    } else {
+      node.fileCount = 1;
+      fileCount++;
+    }
+    return node;
+  }).sort((a, b) => {
+    if (a.children && !b.children)
+      return -1;
+    if (!a.children && b.children)
+      return 1;
+    return a.name.localeCompare(b.name);
+  });
+  const tree = {
+    id: parentId !== null ? parentId : 1,
+    name: path.basename(directoryPath),
+    parentId,
+    fileCount,
+    children
+  };
+  return tree;
+};
+var generateDirectoryTreeView = (childs) => {
+  let html = "";
+  childs.forEach((el) => {
+    html += `<details>
+<summary><span class="tree-item" title="${el.name}" data-id="${el.id}">${el.name}</span></summary>`;
+    if (el.children && el.children.length) {
+      html += generateDirectoryTreeView(el.children);
+    }
+    html += `</details>`;
+  });
+  return html;
+};
+var generateCurrentDirectoryTree = (filePath) => generateDirectoryTree(path.dirname(filePath));
+
 // src/main.ts
 var main = () => {
   onReady();
@@ -93,7 +151,11 @@ var mainWindowListens = (mainWindow) => {
   });
   import_electron.ipcMain.on("open-file", async (event, filePath) => {
     try {
-      const fileContent = await fs.promises.readFile(filePath, "utf-8");
+      setTimeout(() => {
+        const html = generateDirectoryTreeView(generateCurrentDirectoryTree(filePath).children);
+        event.reply("generated-directory-tree-view", html);
+      }, 1e3);
+      const fileContent = await fs2.promises.readFile(filePath, "utf-8");
       event.reply("file-content", filePath, (0, import_path.dirname)(filePath), fileContent);
     } catch (error) {
       event.reply("file-error", error.message);
@@ -106,7 +168,7 @@ var mainWindowListens = (mainWindow) => {
         filters: [{ name: "Markdown Files", extensions: ["md", "markdown"] }]
       });
       if (!result.canceled) {
-        await fs.promises.writeFile(result.filePath, contentToSave, "utf-8");
+        await fs2.promises.writeFile(result.filePath, contentToSave, "utf-8");
         event.reply("save-file-dialog-reply", { filePath: result.filePath });
       } else {
         event.reply("save-file-dialog-reply", { canceled: true });
@@ -118,7 +180,7 @@ var mainWindowListens = (mainWindow) => {
   });
   import_electron.ipcMain.on("save-file", async (event, { filePath, contentToSave }) => {
     try {
-      await fs.promises.writeFile(filePath, contentToSave, "utf-8");
+      await fs2.promises.writeFile(filePath, contentToSave, "utf-8");
       event.reply("file-saved", filePath, (0, import_path.dirname)(filePath));
     } catch (error) {
       console.error("Error saving file:", error);
@@ -132,7 +194,7 @@ var mainWindowListens = (mainWindow) => {
         filters: [{ name: "Markdown Files", extensions: ["md", "markdown"] }]
       });
       if (!result.canceled) {
-        await fs.promises.writeFile(result.filePath, contentToSave, "utf-8");
+        await fs2.promises.writeFile(result.filePath, contentToSave, "utf-8");
         event.reply("save-as-file-dialog-reply", { filePath: result.filePath });
       } else {
         event.reply("save-as-file-dialog-reply", { canceled: true });
@@ -145,7 +207,7 @@ var mainWindowListens = (mainWindow) => {
   import_electron.ipcMain.on("to-generate-html", async (event, { filePath, contentToExport }) => {
     const baseName = (0, import_path.basename)(filePath, (0, import_path.extname)(filePath));
     try {
-      await fs.promises.writeFile(
+      await fs2.promises.writeFile(
         (0, import_path.join)((0, import_path.dirname)(filePath), baseName + ".html"),
         generateHTML(baseName, contentToExport, true)
       );
@@ -169,8 +231,8 @@ var createWindow = () => {
       experimentalFeatures: true
     }
   });
-  const path = (0, import_path.join)(__dirname, "app", "index.html");
-  win.loadFile(path);
+  const path2 = (0, import_path.join)(__dirname, "app", "index.html");
+  win.loadFile(path2);
   return win;
 };
 var appListens = () => {

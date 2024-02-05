@@ -54,6 +54,7 @@ contextBridge.exposeInMainWorld('vanella', {
         'file-content': callbackOfFileContent,
         'file-saved': callbackOfFileSaved,
         'file-save-error': callbackOfFileSaveError,
+        'generated-directory-tree-view': callbackOfDirectoryTreeView,
         // TODO...
     }) {
 
@@ -96,6 +97,10 @@ contextBridge.exposeInMainWorld('vanella', {
             } else {
                 callbackOfFileSaveError(result.error)
             }
+        })
+
+        ipcRenderer.on('generated-directory-tree-view', (event, html) => {
+            callbackOfDirectoryTreeView(html)
         })
 
     },

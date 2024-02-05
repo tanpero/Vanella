@@ -56,7 +56,8 @@ import_electron.contextBridge.exposeInMainWorld("vanella", {
     "to-check-if-be-saved": callbackToCheckIfBeSaved,
     "file-content": callbackOfFileContent,
     "file-saved": callbackOfFileSaved,
-    "file-save-error": callbackOfFileSaveError
+    "file-save-error": callbackOfFileSaveError,
+    "generated-directory-tree-view": callbackOfDirectoryTreeView
     // TODO...
   }) {
     import_electron.ipcRenderer.on("to-check-if-be-saved", (event) => {
@@ -93,6 +94,9 @@ import_electron.contextBridge.exposeInMainWorld("vanella", {
       } else {
         callbackOfFileSaveError(result.error);
       }
+    });
+    import_electron.ipcRenderer.on("generated-directory-tree-view", (event, html) => {
+      callbackOfDirectoryTreeView(html);
     });
   }
 });

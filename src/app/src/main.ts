@@ -17,6 +17,8 @@ let stateManager = new DocumentManager
 
 const title = document.getElementById('title') as HTMLElement
 
+const tree = document.getElementById('tree') as HTMLElement
+
 
 const updateTitle = () => {
   const status = stateManager.getStatus()
@@ -67,6 +69,9 @@ vanella.bindFileManipulation({
     updateTitle()
   },
   'file-save-error': info => alert(info),
+  'generated-directory-tree-view': html => {
+    tree.innerHTML = html
+  }
 })
 
 
@@ -153,5 +158,3 @@ shortcut.when('Ctrl T').to(() => {
     'none': 'block',
   }[style.display || 'none'] as string
 })
-
-console.clear()

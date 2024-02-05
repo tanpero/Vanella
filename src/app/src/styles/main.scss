@@ -1,4 +1,5 @@
 @import url('./scroll-bar.scss');
+@import url('./directory-tree.scss');
 
 @media (-webkit-device-pixel-ratio: 1.5), (device-pixel-ratio: 1.5),
 (-webkit-device-pixel-ratio: 2), (device-pixel-ratio: 2),
@@ -54,9 +55,9 @@ body {
   .addition {
     display: none;
     overflow-y: auto;
-    overflow-x: auto;
+    overflow-x: hidden;
     height: 100%;
-    width: 10%;
+    width: 15%;
   }
 
   .left-pane {
