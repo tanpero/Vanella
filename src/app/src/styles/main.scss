@@ -46,27 +46,36 @@ body {
   -webkit-app-region: no-drag;
   height: calc(100vh - 24px) !important;
   margin-top: 24px;
-}
 
-.left-pane, .right-pane {
-  flex: 1;
-}
+  .left-pane, .right-pane {
+    flex: 1;
+  }
 
-.left-pane {
-  min-width: 50%;
-  overflow-y: scroll;
-}
+  .addition {
+    display: none;
+    overflow-y: auto;
+    overflow-x: auto;
+    height: 100%;
+    width: 10%;
+  }
 
-.right-pane {
-  overflow-y: scroll;
-  overflow-x: hidden;
-  min-width: 50%;
-  max-width: 50%;
-  font-size: 1em; // 正文字号
-  line-height: 1.6; // 行高
-  margin: 1.6em; // 页边距
-  padding-right: 4em;
-  box-sizing: border-box;
+  .left-pane {
+    max-width: 50%;
+    min-width: 40%;
+    overflow-y: scroll;
+  }
+
+  .right-pane {
+    overflow-y: scroll;
+    overflow-x: hidden;
+    max-width: 50%;
+    min-width: 40%;
+    font-size: 1em; // 正文字号
+    line-height: 1.6; // 行高
+    margin: 0.5em; // 页边距
+    padding-right: 1em;
+    box-sizing: border-box;
+  }
 }
 
 #title-bar {

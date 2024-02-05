@@ -17,6 +17,7 @@ let stateManager = new DocumentManager
 
 const title = document.getElementById('title') as HTMLElement
 
+
 const updateTitle = () => {
   const status = stateManager.getStatus()
   const path = stateManager.getFilePath()
@@ -142,3 +143,15 @@ shortcut.when('Ctrl P').to(() => {
       break
   }
 })
+
+const additionalBlock = document.querySelector('.addition') as HTMLElement
+
+shortcut.when('Ctrl T').to(() => {
+  const style = additionalBlock.style as CSSStyleDeclaration
+  additionalBlock.style.display = {
+    'block': 'none',
+    'none': 'block',
+  }[style.display || 'none'] as string
+})
+
+console.clear()
