@@ -8,6 +8,13 @@
   align-items: center;
 }
 
+.loading-message {
+  margin-top: 10px;
+  height: auto;
+  width: 100%;
+  display: block;
+}
+
 .loader {
   position: relative;
   transform: rotate(calc(var(--r) * 45deg));
@@ -15,7 +22,7 @@
 
 .loader span {
   position: absolute;
-  top: 0;
+  top: 40px;
   left: -20px;
 
   width: 20px;
@@ -62,6 +69,6 @@
 
 
 #loading-tree .loader {
-  scale: 0.4;
+  scale: 0.3;
 }
 

@@ -67,11 +67,11 @@ var fs = __toESM(require("fs"));
 var path = __toESM(require("path"));
 function isHidden(filePath) {
   const stats = fs.statSync(filePath);
-  return (stats.mode & 511) === 0;
+  return (stats.mode & 511) === 0 || filePath.startsWith(".");
 }
-var availableExt = ["md", "markdown", "txt"];
+var availableExt = [".md", ".markdown", ".txt"];
 function isAvailableFile(filePath) {
-  return availableExt.includes(path.extname(filePath.toLocaleLowerCase()));
+  return availableExt.includes(path.extname(filePath).toLocaleLowerCase());
 }
 var generateDirectoryTree = (directoryPath, parentId = null) => {
   return new Promise(async (resolve, reject) => {
@@ -79,15 +79,7 @@ var generateDirectoryTree = (directoryPath, parentId = null) => {
       const contents = fs.readdirSync(directoryPath);
       let fileCount = 0;
       const children = [];
-      const tasks = contents.filter(async (content) => {
-        if (content.startsWith(".") || isHidden(path.join(directoryPath, content)))
-          return false;
-        const fullPath = path.join(directoryPath, content);
-        const stats = await fs.statSync(fullPath);
-        if (stats.isDirectory())
-          return true;
-        return isAvailableFile(content);
-      }).map(async (content, index) => {
+      await contents.forEach(async (content, index) => {
         const fullPath = path.join(directoryPath, content);
         const stats = await fs.statSync(fullPath);
         const node = {
@@ -96,20 +88,20 @@ var generateDirectoryTree = (directoryPath, parentId = null) => {
           parentId,
           fileCount: 0
         };
-        if (stats.isDirectory()) {
-          const subTree = await generateDirectoryTree(fullPath, node.id);
-          node.children = subTree.children;
-          node.fileCount = subTree.fileCount;
-        } else {
-          node.fileCount = 1;
-          fileCount++;
+        if (!isHidden(fullPath)) {
+          if (stats.isDirectory()) {
+            const subTree = await generateDirectoryTree(fullPath, node.id);
+            node.children = subTree.children;
+            node.fileCount = subTree.fileCount;
+            children.push(node);
+          } else if (isAvailableFile(content)) {
+            node.fileCount = 1;
+            fileCount++;
+            children.push(node);
+          }
         }
-        return node;
       });
-      for (const task of tasks) {
-        children.push(await task);
-      }
-      const sortedChildren = children.sort((a, b) => {
+      const sortedChildren = await children.sort((a, b) => {
         if (a.children && !b.children)
           return -1;
         if (!a.children && b.children)
@@ -121,7 +113,7 @@ var generateDirectoryTree = (directoryPath, parentId = null) => {
         name: path.basename(directoryPath),
         parentId,
         fileCount,
-        children
+        children: sortedChildren
       };
       resolve(tree);
     } catch (error) {
@@ -142,6 +134,7 @@ var generateDirectoryTreeView = (childs) => {
   return html;
 };
 var generateCurrentDirectoryTree = async (filePath) => await generateDirectoryTree(path.dirname(filePath));
+var generateTreeHTML = async (filePath) => await generateDirectoryTreeView((await generateCurrentDirectoryTree(filePath)).children);
 
 // src/main.ts
 var main = () => {
@@ -175,11 +168,8 @@ var mainWindowListens = (mainWindow) => {
   import_electron.ipcMain.on("open-file", async (event, filePath) => {
     try {
       setTimeout(() => {
-        generateCurrentDirectoryTree(filePath).then((tree) => {
-          const data = generateDirectoryTreeView(tree.children);
-          event.reply("generated-directory-tree-view", data);
-        });
-      }, 1e3);
+        generateTreeHTML(filePath).then((data) => event.reply("generated-directory-tree-view", data));
+      }, 500);
       const fileContent = await fs2.promises.readFile(filePath, "utf-8");
       event.reply("file-content", filePath, (0, import_path.dirname)(filePath), fileContent);
     } catch (error) {

@@ -13,12 +13,12 @@ interface TreeNode {
 
 function isHidden(filePath: string): boolean {
   const stats = fs.statSync(filePath)
-  return (stats.mode & 0o777) === 0
+  return (stats.mode & 0o777) === 0 || filePath.startsWith('.')
 }
 
-const availableExt = ['md', 'markdown', 'txt']
+const availableExt = ['.md', '.markdown', '.txt']
 function isAvailableFile(filePath: string): boolean {
-  return availableExt.includes(path.extname(filePath.toLocaleLowerCase()))
+  return availableExt.includes(path.extname(filePath).toLocaleLowerCase())
 }
 
 const generateDirectoryTree = (directoryPath: string, parentId: number | null = null): Promise<TreeNode> => {
@@ -28,45 +28,34 @@ const generateDirectoryTree = (directoryPath: string, parentId: number | null = 
       let fileCount = 0
 
       const children: TreeNode[] = []
-      const tasks = contents
-        .filter(async (content) => {
-          if (content.startsWith('.') || isHidden(path.join(directoryPath, content))) return false
+      await contents.forEach(async (content, index) => {
+        const fullPath = path.join(directoryPath, content)
+        const stats = await fs.statSync(fullPath)
 
-          const fullPath = path.join(directoryPath, content)
-          const stats = await fs.statSync(fullPath)
-          if (stats.isDirectory()) return true
-          return isAvailableFile(content)
-        })
-        .map(async (content, index) => {
-          const fullPath = path.join(directoryPath, content)
-          const stats = await fs.statSync(fullPath)
+        const node: TreeNode = {
+          id: index + 1,
+          name: content,
+          parentId: parentId,
+          fileCount: 0,
+        }
 
-          const node: TreeNode = {
-            id: index + 1,
-            name: content,
-            parentId: parentId,
-            fileCount: 0,
-          }
-
+        if (!isHidden(fullPath)) {
           if (stats.isDirectory()) {
             // If it's a directory, recursively generate the tree for its contents
             const subTree = await generateDirectoryTree(fullPath, node.id)
             node.children = subTree.children
             node.fileCount = subTree.fileCount
-          } else {
-            // If it's a file, update the file count
+            children.push(node)
+          } else if (isAvailableFile(content)) {
             node.fileCount = 1
             fileCount++
+            children.push(node)
           }
+        }      
 
-          return node
-        })
+      })
 
-      for (const task of tasks) {
-        children.push(await task)
-      }
-
-      const sortedChildren = children.sort((a, b) => {
+      const sortedChildren = await children.sort((a, b) => {
         // Sort by directories first, then files, in alphabetical order
         if (a.children && !b.children) return -1 // a is a directory, b is a file
         if (!a.children && b.children) return 1 // b is a directory, a is a file
@@ -78,7 +67,7 @@ const generateDirectoryTree = (directoryPath: string, parentId: number | null = 
         name: path.basename(directoryPath),
         parentId: parentId,
         fileCount: fileCount,
-        children: children,
+        children: sortedChildren,
       }
 
       resolve(tree)
@@ -109,5 +98,6 @@ const generateDirectoryTreeView = childs => {
 }
 
 
-export const generateCurrentDirectoryTree = async filePath => await generateDirectoryTree(path.dirname(filePath))
-export { generateDirectoryTreeView }
+const generateCurrentDirectoryTree = async filePath => await generateDirectoryTree(path.dirname(filePath))
+
+export const generateTreeHTML = async filePath => await generateDirectoryTreeView((await generateCurrentDirectoryTree(filePath)).children)
