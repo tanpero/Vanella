@@ -3,16 +3,10 @@
   background-color: transparent;
   filter: hue-rotate(90deg);
   display: none;
+  position: absolute;
   justify-content: left;
   margin-left: 40px;
   align-items: center;
-}
-
-.loading-message {
-  margin-top: 10px;
-  height: auto;
-  width: 100%;
-  display: block;
 }
 
 .loader {

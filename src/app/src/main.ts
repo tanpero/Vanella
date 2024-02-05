@@ -14,6 +14,7 @@ import { willClose, willSave } from './interaction-messages'
 declare const vanella: any
 
 let stateManager = new DocumentManager
+let lastDirPath = ''
 
 const title = document.getElementById('title') as HTMLElement
 
@@ -29,6 +30,12 @@ const updateTitle = () => {
   title.style.marginLeft = '3em'
   title.innerText += (status === DocumentStatus.Saved ? "📖" : "💡" )
 }
+
+const setCurrentFile = filePath => {
+  vanella.openFile(filePath)
+}
+
+window.setCurrentFile = setCurrentFile
 
 run('#editor', '.left-pane', '#viewer', '.right-pane', (markdown: string) => {
   updateTitle()
@@ -65,9 +72,11 @@ vanella.bindFileManipulation({
     upload(content)
     stateManager.openDocument(filePath, dirPath)
     updateTitle()
-    emptyTree.style.display = 'none'
-    tree.style.display = 'none'
-    loadingTree.style.display = 'flex'
+    if (!lastDirPath || !dirPath.startsWith(lastDirPath)) {
+      emptyTree.style.display = 'none'
+      tree.style.display = 'none'
+      loadingTree.style.display = 'flex'
+    }
   },
   'file-saved': (filePath, dirPath) => {
     stateManager.saveDocumentAs(filePath, dirPath)
@@ -75,9 +84,12 @@ vanella.bindFileManipulation({
   },
   'file-save-error': info => alert(info),
   'generated-directory-tree-view': html => {
-    loadingTree.style.display = 'none'
-    tree.style.display = 'block'
-    tree.innerHTML = html
+    if (!lastDirPath || !stateManager.getDirectoryPath()?.startsWith(lastDirPath)) {
+      loadingTree.style.display = 'none'
+      tree.style.display = 'block'
+      tree.innerHTML = html
+      lastDirPath = stateManager.getDirectoryPath() as string
+    }
   }
 })
 

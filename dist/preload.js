@@ -16,9 +16,9 @@ import_electron.contextBridge.exposeInMainWorld("vanella", {
   toClose() {
     import_electron.ipcRenderer.send("to-close");
   },
-  async openFile() {
+  async openFile(filePath) {
     try {
-      import_electron.ipcRenderer.send("open-file-dialog");
+      filePath ? import_electron.ipcRenderer.send("open-file", filePath) : import_electron.ipcRenderer.send("open-file-dialog");
     } catch (error) {
       console.error("Error sending open-file-dialog: ", error);
     }

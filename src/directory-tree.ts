@@ -5,7 +5,8 @@ import { Worker, isMainThread, parentPort, workerData } from 'worker_threads'
 
 interface TreeNode {
   id: number
-  name: string
+  name: string,
+  fullPath?: string,
   parentId: number | null
   fileCount: number
   children?: TreeNode[]
@@ -13,7 +14,7 @@ interface TreeNode {
 
 function isHidden(filePath: string): boolean {
   const stats = fs.statSync(filePath)
-  return (stats.mode & 0o777) === 0 || filePath.startsWith('.')
+  return (stats.mode & 0o777) === 0
 }
 
 const availableExt = ['.md', '.markdown', '.txt']
@@ -35,11 +36,12 @@ const generateDirectoryTree = (directoryPath: string, parentId: number | null = 
         const node: TreeNode = {
           id: index + 1,
           name: content,
+          fullPath,
           parentId: parentId,
           fileCount: 0,
         }
 
-        if (!isHidden(fullPath)) {
+        if (!isHidden(fullPath) && !content.startsWith('.')) {
           if (stats.isDirectory()) {
             // If it's a directory, recursively generate the tree for its contents
             const subTree = await generateDirectoryTree(fullPath, node.id)
@@ -84,7 +86,9 @@ const generateDirectoryTreeView = childs => {
       el.name
     }" data-id="${
       el.id
-    }">${
+    }" ${
+      el.fullPath ? `onclick="setCurrentFile('${el.fullPath.replaceAll('\\', '\\\\')}')" ` : ''
+    }>${
       el.name
     }</span></summary>`
 

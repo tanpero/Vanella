@@ -36,11 +36,17 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
             event.reply('open-file-dialog-reply', { error: error.message })
         }
     })
+
+    let lastDirPath = ''
     
     ipcMain.on('open-file', async (event, filePath) => {
         try {
             setTimeout(() => {
-                generateTreeHTML(filePath).then(data => event.reply('generated-directory-tree-view', data))
+                if (!lastDirPath || !dirname(filePath).startsWith(lastDirPath)) {
+                    console.log(dirname(filePath), lastDirPath, dirname(filePath).startsWith(lastDirPath))
+                    generateTreeHTML(filePath)
+                        .then(data => event.reply('generated-directory-tree-view', data)).then(() => lastDirPath = dirname(filePath))
+                }
             }, 500)
             const fileContent = await fs.promises.readFile(filePath, 'utf-8')
             event.reply('file-content', filePath, dirname(filePath), fileContent)

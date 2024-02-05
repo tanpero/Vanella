@@ -8,9 +8,9 @@ contextBridge.exposeInMainWorld('vanella', {
     close() { ipcRenderer.send("close") },
     toClose() { ipcRenderer.send("to-close") },
 
-    async openFile() {
+    async openFile(filePath?: string) {
         try {
-            ipcRenderer.send('open-file-dialog')
+            filePath ? ipcRenderer.send('open-file', filePath) : ipcRenderer.send('open-file-dialog')
         } catch (error) {
             console.error('Error sending open-file-dialog: ', error)
         }

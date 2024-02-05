@@ -67,7 +67,7 @@ var fs = __toESM(require("fs"));
 var path = __toESM(require("path"));
 function isHidden(filePath) {
   const stats = fs.statSync(filePath);
-  return (stats.mode & 511) === 0 || filePath.startsWith(".");
+  return (stats.mode & 511) === 0;
 }
 var availableExt = [".md", ".markdown", ".txt"];
 function isAvailableFile(filePath) {
@@ -85,10 +85,11 @@ var generateDirectoryTree = (directoryPath, parentId = null) => {
         const node = {
           id: index + 1,
           name: content,
+          fullPath,
           parentId,
           fileCount: 0
         };
-        if (!isHidden(fullPath)) {
+        if (!isHidden(fullPath) && !content.startsWith(".")) {
           if (stats.isDirectory()) {
             const subTree = await generateDirectoryTree(fullPath, node.id);
             node.children = subTree.children;
@@ -125,7 +126,7 @@ var generateDirectoryTreeView = (childs) => {
   let html = "";
   childs.forEach((el) => {
     html += `<details>
-<summary><span class="tree-item" title="${el.name}" data-id="${el.id}">${el.name}</span></summary>`;
+<summary><span class="tree-item" title="${el.name}" data-id="${el.id}" ${el.fullPath ? `onclick="setCurrentFile('${el.fullPath.replaceAll("\\", "\\\\")}')" ` : ""}>${el.name}</span></summary>`;
     if (el.children && el.children.length) {
       html += generateDirectoryTreeView(el.children);
     }
@@ -165,10 +166,14 @@ var mainWindowListens = (mainWindow) => {
       event.reply("open-file-dialog-reply", { error: error.message });
     }
   });
+  let lastDirPath = "";
   import_electron.ipcMain.on("open-file", async (event, filePath) => {
     try {
       setTimeout(() => {
-        generateTreeHTML(filePath).then((data) => event.reply("generated-directory-tree-view", data));
+        if (!lastDirPath || !(0, import_path.dirname)(filePath).startsWith(lastDirPath)) {
+          console.log((0, import_path.dirname)(filePath), lastDirPath, (0, import_path.dirname)(filePath).startsWith(lastDirPath));
+          generateTreeHTML(filePath).then((data) => event.reply("generated-directory-tree-view", data)).then(() => lastDirPath = (0, import_path.dirname)(filePath));
+        }
       }, 500);
       const fileContent = await fs2.promises.readFile(filePath, "utf-8");
       event.reply("file-content", filePath, (0, import_path.dirname)(filePath), fileContent);
