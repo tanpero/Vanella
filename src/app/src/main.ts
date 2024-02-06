@@ -9,6 +9,7 @@ import ShortcutListener from './shortcut-listener'
 import { DocumentManager, DocumentStatus } from './document-manager'
 import { extractFileName } from './text-tools'
 import { willClose, willSave } from './interaction-messages'
+import { getGlobalDirPath, setGlobalDirPath, setGlobalFilePath } from './global-context-manager'
 
 
 declare const vanella: any
@@ -69,6 +70,8 @@ vanella.bindFileManipulation({
     }
   },
   'file-content': (filePath, dirPath, content) => {
+    setGlobalFilePath(filePath)
+    setGlobalDirPath(dirPath)
     upload(content)
     stateManager.openDocument(filePath, dirPath)
     updateTitle()
@@ -77,6 +80,7 @@ vanella.bindFileManipulation({
       tree.style.display = 'none'
       loadingTree.style.display = 'flex'
     }
+
   },
   'file-saved': (filePath, dirPath) => {
     stateManager.saveDocumentAs(filePath, dirPath)

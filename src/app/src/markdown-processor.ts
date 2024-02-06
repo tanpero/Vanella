@@ -17,6 +17,8 @@ import rehypeMathjax from 'rehype-mathjax'
 
 import generateTOC from './table-of-contents-generator'
 import { scrollingObserver } from './scrolling-observer'
+import { handleLocalPath } from './handle-local-path'
+import { getGlobalDirPath } from './global-context-manager'
 
 const processor = unified()
   .use(remarkParse)
@@ -32,6 +34,9 @@ const processor = unified()
   .use(rehypeSanitize)
   .use(rehypeHighlight)
   .use(rehypeMathjax)
+  .use(handleLocalPath, {
+    getDirectory: () => getGlobalDirPath(),
+  })
   .use(scrollingObserver)
   .use(rehypeFormat)
   .use(rehypeStringify)

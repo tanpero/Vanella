@@ -43,9 +43,9 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
         try {
             setTimeout(() => {
                 if (!lastDirPath || !dirname(filePath).startsWith(lastDirPath)) {
-                    console.log(dirname(filePath), lastDirPath, dirname(filePath).startsWith(lastDirPath))
                     generateTreeHTML(filePath)
-                        .then(data => event.reply('generated-directory-tree-view', data)).then(() => lastDirPath = dirname(filePath))
+                        .then(data => event.reply('generated-directory-tree-view', data))
+                        .then(() => lastDirPath = dirname(filePath))
                 }
             }, 500)
             const fileContent = await fs.promises.readFile(filePath, 'utf-8')

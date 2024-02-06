@@ -171,7 +171,6 @@ var mainWindowListens = (mainWindow) => {
     try {
       setTimeout(() => {
         if (!lastDirPath || !(0, import_path.dirname)(filePath).startsWith(lastDirPath)) {
-          console.log((0, import_path.dirname)(filePath), lastDirPath, (0, import_path.dirname)(filePath).startsWith(lastDirPath));
           generateTreeHTML(filePath).then((data) => event.reply("generated-directory-tree-view", data)).then(() => lastDirPath = (0, import_path.dirname)(filePath));
         }
       }, 500);
