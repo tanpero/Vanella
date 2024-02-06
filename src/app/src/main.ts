@@ -9,7 +9,7 @@ import ShortcutListener from './shortcut-listener'
 import { DocumentManager, DocumentStatus } from './document-manager'
 import { extractFileName } from './text-tools'
 import { willClose, willSave } from './interaction-messages'
-import { getGlobalDirPath, setGlobalDirPath, setGlobalFilePath } from './global-context-manager'
+import { setGlobalDirPath, setGlobalFilePath } from './global-context-manager'
 
 
 declare const vanella: any
@@ -35,8 +35,6 @@ const updateTitle = () => {
 const setCurrentFile = filePath => {
   vanella.openFile(filePath)
 }
-
-window.setCurrentFile = setCurrentFile
 
 run('#editor', '.left-pane', '#viewer', '.right-pane', (markdown: string) => {
   updateTitle()
@@ -85,6 +83,13 @@ vanella.bindFileManipulation({
   'file-saved': (filePath, dirPath) => {
     stateManager.saveDocumentAs(filePath, dirPath)
     updateTitle()
+    setGlobalFilePath(filePath)
+    setGlobalDirPath(dirPath)
+    if (!lastDirPath || !dirPath.startsWith(lastDirPath)) {
+      emptyTree.style.display = 'none'
+      tree.style.display = 'none'
+      loadingTree.style.display = 'flex'
+    }
   },
   'file-save-error': info => alert(info),
   'generated-directory-tree-view': html => {
@@ -97,32 +102,48 @@ vanella.bindFileManipulation({
   }
 })
 
-
-const shortcut = new ShortcutListener
-
-shortcut.when('Ctrl N').to(() => {  
+const switchFile = async (filePath?: string) => {
   let source = download()
   switch (stateManager.getStatus()) {
     case DocumentStatus.New:
       if (source.trim() !== '') {
         let choice = confirm(willSave)
         if (choice) {
-          vanella.saveFile(source)
+          await vanella.saveFile(source)
         }
+        await setCurrentFile(filePath)
       }
       break
     case DocumentStatus.UnsavedChanges:
       let choice = confirm(willSave)
       if (choice) {
-        vanella.saveFile(source, stateManager.getFilePath())
+        await vanella.saveFile(source, stateManager.getFilePath())
+        if (filePath) await setCurrentFile(filePath)
+        else {
+          await upload('')
+          stateManager = new DocumentManager
+        }
       }
       break
     case DocumentStatus.Saved:
+      if (filePath) {
+        await setCurrentFile(filePath)
+      } else {
+        await upload('')
+        stateManager = new DocumentManager
+      }
       break
   }
-  stateManager = new DocumentManager
-  upload('')
+  
   updateTitle()
+}
+
+window.switchFile = switchFile
+
+const shortcut = new ShortcutListener
+
+shortcut.when('Ctrl N').to(() => {
+  switchFile()
 })
 
 shortcut.when('Ctrl O').to(() => {

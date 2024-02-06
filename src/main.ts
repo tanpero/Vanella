@@ -16,6 +16,17 @@ const onReady = () => {
     })
 }
 
+let lastDirPath = ''
+const toGenerateTreeView = (event, filePath) => {
+    setTimeout(() => {
+        if (!lastDirPath || !dirname(filePath).startsWith(lastDirPath)) {
+            generateTreeHTML(filePath)
+                .then(data => event.reply('generated-directory-tree-view', data))
+                .then(() => lastDirPath = dirname(filePath))
+        }
+    }, 500)
+}
+
 const mainWindowListens = (mainWindow: BrowserWindow) => {
 
     ipcMain.on('minimize', () => mainWindow.minimize())
@@ -37,17 +48,10 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
         }
     })
 
-    let lastDirPath = ''
     
     ipcMain.on('open-file', async (event, filePath) => {
         try {
-            setTimeout(() => {
-                if (!lastDirPath || !dirname(filePath).startsWith(lastDirPath)) {
-                    generateTreeHTML(filePath)
-                        .then(data => event.reply('generated-directory-tree-view', data))
-                        .then(() => lastDirPath = dirname(filePath))
-                }
-            }, 500)
+            toGenerateTreeView(event, filePath)
             const fileContent = await fs.promises.readFile(filePath, 'utf-8')
             event.reply('file-content', filePath, dirname(filePath), fileContent)
         } catch (error) {
@@ -65,6 +69,7 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
             if (!result.canceled) {
                 await fs.promises.writeFile(result.filePath as fs.PathLike, contentToSave, 'utf-8')
                 event.reply('save-file-dialog-reply', { filePath: result.filePath })
+                toGenerateTreeView(event, result.filePath)
             } else {
                 event.reply('save-file-dialog-reply', { canceled: true })
             }
@@ -94,6 +99,7 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
             if (!result.canceled) {
                 await fs.promises.writeFile(result.filePath as fs.PathLike, contentToSave, 'utf-8')
                 event.reply('save-as-file-dialog-reply', { filePath: result.filePath })
+                toGenerateTreeView(event, result.filePath)
             } else {
                 event.reply('save-as-file-dialog-reply', { canceled: true })
             }

@@ -33,7 +33,7 @@ esbuild.build({
   entryPoints: ['src/app/src/main.ts'],
   bundle: true,
   minify: true,
-  target: 'es2020',
+  target: 'es2021',
   outfile: 'dist/app/bundle.js',
   loader: {
     '.ts': 'ts',

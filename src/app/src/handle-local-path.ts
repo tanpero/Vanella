@@ -1,66 +1,65 @@
-import { joinPath, resolvePath } from "./text-tools"
+import { resolvePath } from "./text-tools"
 
 const isLocalPath = url =>
   // 判断是否为本地路径
-  !/^https?:\/\//i.test(url)
+  /^(\.\/|\.\.\/)/.test(url) ||
+      !/^https?:\/\//i.test(url) ||
+      !/^(localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+)(:\d{1,5})?/.test(url)
 
-const isMarkdownFile = (url) => /\.(md|markdown|txt)$/i.test(url)
+const isMarkdownFile = url => /\.(md|markdown|txt)$/i.test(url)
 
-export const handleLocalPath = options => {
-  const { getDirectory, rootDirectory } = options
+const isWithoutExtname = url => /^[^.\\/]*$/.test(url)
 
-  const processLink = node => {
-    if (!node.properties.href) return
+export const handleLocalPath = options => tree => {
+  const { getDirectory } = options
+  const traverse = node => {
+    if (node.type === 'element') {
+      switch (node.tagName) {
+        case 'a': {
+          let url = node.properties.href
+          if (isLocalPath(url)) {
+            const parentDirectory = getDirectory()
+            const absolutePath = resolvePath(parentDirectory, url)
+            if (isMarkdownFile(url)) {
+              node.properties = {
+                ...node.properties,
+                onClick: `switchFile('${absolutePath.replaceAll('\\', '\\\\')}')`,
+              }
+              node.properties.href = void 0
+            } else if (isWithoutExtname(url)) {              
+              node.properties = {
+                ...node.properties,
+                onClick: `switchFile('${absolutePath.replaceAll('\\', '\\\\') + '.md'}')`,
+              }
+              node.properties.href = void 0
+            }
+          }
+        }
+        break
+        case 'img': case 'video': case 'audio': {
+          let url = node.properties.src
+          let absoluteUrl
 
-    const url = node.properties.href
-    let absoluteUrl
+          if (isLocalPath(url)) {
+            // 处理相对路径
+            const parentDirectory = getDirectory()
+            const absolutePath = resolvePath(parentDirectory, url)
 
-    if (isLocalPath(url)) {
-      // 处理相对路径
-      const parentDirectory = getDirectory()
-      const absolutePath = resolvePath(parentDirectory, url)
+            absoluteUrl = absolutePath
+          } else {
+            absoluteUrl = url
+          }
 
-      absoluteUrl = absolutePath
-    } else {
-      absoluteUrl = url
-    }
-
-    if (isMarkdownFile(url)) {
-      // 若为 markdown 文件，覆写单击事件
-      node.properties.onClick = `vanella.openFile('${absoluteUrl}')`
-    } else {
-      // 否则加上根目录前缀
-      node.properties.href = absoluteUrl
-    }
-  }
-
-  const processMedia = node => {
-    if (!node.properties.src) return
-
-    const url = node.properties.src
-    let absoluteUrl
-
-    if (isLocalPath(url)) {
-      // 处理相对路径
-      const parentDirectory = getDirectory()
-      const absolutePath = resolvePath(parentDirectory, url)
-
-      absoluteUrl = absolutePath
-    } else {
-      absoluteUrl = url
-    }
-
-    // 替换为绝对路径
-    node.properties.src = absoluteUrl
-  }
-
-  return tree => {
-    tree.children.forEach(node => {
-      if (node.tagName === 'a') {
-        processLink(node)
-      } else if (['img', 'video', 'audio'].includes(node.tagName)) {
-        processMedia(node)
+          // 替换为绝对路径
+          node.properties.src = absoluteUrl
+          break
+        }
+        default: {
+          node.children.forEach(traverse)
+        }
       }
-    })
+    }
   }
+  tree.children.forEach(traverse)
+  return tree
 }

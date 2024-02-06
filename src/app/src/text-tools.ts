@@ -72,7 +72,4 @@ export const joinPath = (...paths: string[]): string => {
   return joinedPath
 }
 
-// Example usage
-const joinedPath = joinPath('/root', 'dir1', 'dir2', 'file.txt')
-console.log(joinedPath)
 

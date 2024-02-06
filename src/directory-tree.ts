@@ -1,6 +1,5 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { Worker, isMainThread, parentPort, workerData } from 'worker_threads'
 
 
 interface TreeNode {
@@ -87,7 +86,7 @@ const generateDirectoryTreeView = childs => {
     }" data-id="${
       el.id
     }" ${
-      el.fullPath ? `onclick="setCurrentFile('${el.fullPath.replaceAll('\\', '\\\\')}')" ` : ''
+      el.fullPath ? `onclick="switchFile('${el.fullPath.replaceAll('\\', '\\\\')}')" ` : ''
     }>${
       el.name
     }</span></summary>`
@@ -102,6 +101,8 @@ const generateDirectoryTreeView = childs => {
 }
 
 
-const generateCurrentDirectoryTree = async filePath => await generateDirectoryTree(path.dirname(filePath))
+const generateCurrentDirectoryTree = async filePath =>
+    await generateDirectoryTree(path.dirname(filePath))
 
-export const generateTreeHTML = async filePath => await generateDirectoryTreeView((await generateCurrentDirectoryTree(filePath)).children)
+export const generateTreeHTML = async filePath =>
+    await generateDirectoryTreeView((await generateCurrentDirectoryTree(filePath)).children)

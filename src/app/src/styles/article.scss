@@ -1,8 +1,55 @@
 $indentation: 2em;
 
 h1, h2, h3, h4, h5, h6 {
-  margin-top: 4px;
-  margin-bottom: 4px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+  color: rgb(222, 222, 222);
+  &:empty {
+    display: none;
+  }
+}
+
+h1 {
+  padding-top: 20px;
+  padding-bottom: 10px;
+  border-bottom-color: rgb(203, 203, 203);
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  font-size: 2.5rem;
+}
+
+h2 {
+  padding-top: 15px;
+  padding-bottom: 5px;
+  border-bottom-color: rgb(170, 170, 170);
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  font-size: 1.8rem;
+}
+
+h3 {
+  padding-top: 10px;
+  padding-bottom: 5px;
+  font-size: 1.4rem;
+}
+
+h4 {
+  padding-top: 8px;
+  padding-bottom: 3px;
+  font-size: 1.2rem;
+}
+
+h5 {
+  padding-top: 5px;
+  padding-bottom: 2px;
+  font-size: 1.1rem;
+}
+
+h6 {
+  padding-top: 3px;
+  padding-bottom: 1px;
+  font-size: 1rem;
 }
 
 p {
@@ -11,6 +58,7 @@ p {
   white-space: break-spaces;
   word-wrap: break-word;
   word-break: break-all;
+  line-height: 1.6em;
 }
 
 a {
