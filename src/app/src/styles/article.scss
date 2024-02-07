@@ -1,8 +1,8 @@
 $indentation: 2em;
 
+
 h1, h2, h3, h4, h5, h6 {
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin-top: 15px;
   box-sizing: border-box;
   color: rgb(222, 222, 222);
   &:empty {
@@ -13,6 +13,7 @@ h1, h2, h3, h4, h5, h6 {
 h1 {
   padding-top: 20px;
   padding-bottom: 10px;
+  margin-bottom: 10px;
   border-bottom-color: rgb(203, 203, 203);
   border-bottom-style: solid;
   border-bottom-width: 1px;
@@ -22,6 +23,7 @@ h1 {
 h2 {
   padding-top: 15px;
   padding-bottom: 5px;
+  margin-bottom: 8px;
   border-bottom-color: rgb(170, 170, 170);
   border-bottom-style: solid;
   border-bottom-width: 1px;
@@ -36,20 +38,29 @@ h3 {
 
 h4 {
   padding-top: 8px;
-  padding-bottom: 3px;
+  margin-bottom: 0;
   font-size: 1.2rem;
 }
 
 h5 {
-  padding-top: 5px;
-  padding-bottom: 2px;
+  margin-bottom: 0;
   font-size: 1.1rem;
 }
 
 h6 {
-  padding-top: 3px;
-  padding-bottom: 1px;
+  margin-bottom: 0;
   font-size: 1rem;
+}
+
+.container {
+  > h1:first-child,
+  > h2:first-child,
+  > h3:first-child,
+  > h4:first-child,
+  > h5:first-child,
+  > h6:first-child {
+    margin-top: 30px;
+  }
 }
 
 p {
@@ -58,7 +69,7 @@ p {
   white-space: break-spaces;
   word-wrap: break-word;
   word-break: break-all;
-  line-height: 1.6em;
+  line-height: 2.7em;
 }
 
 a {
@@ -73,6 +84,27 @@ a {
       }
     }
   }
+}
+
+.dropcap {
+  color: red;
+  float: left;
+  font-size: 5rem;
+  line-height: 3.5rem;
+  margin: 0;
+  padding: 0.5rem;
+}
+
+/* hide visually from eyes, but not aurally from screen readers */
+.invisible {
+  clip: rect(1px, 1px, 1px, 1px);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  top: auto;
+  white-space: nowrap;
+  width: 1px;
+  display: none;
 }
 
 img {
@@ -95,6 +127,7 @@ ul {
       content: '\2022'; // 使用圆点作为项目标记
       position: absolute;
       left: -1em; // 圆点与文字之间的距离
+      color: #7d8a9f;
     }
   }
 }
@@ -116,6 +149,7 @@ ol {
       left: -2em;
       width: $indentation;
       text-align: right; // 右对齐编号
+      color: #7d8a9f;
     }
   }
 }
@@ -168,12 +202,6 @@ blockquote:after {
   margin-bottom: 1em;
 }
 
-
-p {
-  text-align: justify; 
-}
-
-$indentation: 20px;
 
 ul[name='user-content-table-of-contents'] {
   p {

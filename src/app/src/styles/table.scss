@@ -28,6 +28,51 @@ table {
     color: $th-color;
   }
 
+  
+  thead {
+    $allCellsEmpty: true;
+    @each $cell in & {
+      @if not (empty(&)) {
+        $allCellsEmpty: false;
+      }
+    }
+  
+    @if $allCellsEmpty {
+      border-collapse: collapse;
+      border-spacing: 0;
+  
+      td {
+        height: 0;
+      }
+  
+      th {
+        display: none;
+        height: 0;
+        border: 0;
+  
+        &:first-child {
+          border-left: 0;
+        }
+  
+        &:last-child {
+          border-right: 0;
+        }
+  
+        &:not(:first-child):not(:last-child) {
+          border-left: 0;
+          border-right: 0;
+        }
+  
+        &:first-child:nth-last-child(2),
+        &:first-child:nth-last-child(2) ~ th {
+          border-bottom: 3px solid;
+        }
+      }
+    }
+  }
+  
+
+
   tbody {
     tr {
       & > * {

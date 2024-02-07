@@ -1,4 +1,7 @@
 pre {
+
+  position: relative;
+
   code {
     display: block;
     position: relative;    
@@ -6,4 +9,46 @@ pre {
     font-family: Consolas, Monaco, monospace;
     overflow-x: auto;
   }
+
+  .filename {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #f0f0f0;
+    padding: 0.2em 0.5em;
+    font-size: 0.8em;
+    color: #666;
+    border-bottom-right-radius: 0.3em;
+  }
+
+  .language {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #e0e0e0;
+    padding: 0.2em 0.5em;
+    font-size: 0.8em;
+    color: #333;
+    border-bottom-right-radius: 0.3em;
+  }
+  // code-styles.scss
+.file-name, .language-name {
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+
+.file-name {
+  background-color: #eef;
+  color: #007acc;
+  border-radius: 4px;
+}
+
+.language-name {
+  background-color: #efe;
+  color: #228822;
+  border-radius: 4px;
+}
+
+
 }
