@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node build.js && electron .",
     "build": "node build.js && electron-builder",
+    "to-ms-store": "npm run build && cp 'build/Vanella Setup 0.1.0.exe' build/Vanella.exe && electron-windows-store --input-directory build --output-directory release/Microsoft-store --package-version 0.1.0.0 --package-name vanella",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": "git+https://github.com/tanpero/Vanella.git",
@@ -18,9 +19,13 @@
   "build": {
     "appId": "io.camille.vanella",
     "productName": "Vanella",
-    "electronDownload": {
-      "mirror": "https://npm.taobao.org/mirrors/electron/"
-    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tanpero",
+        "repo": "vanella"
+      }
+    ],
     "directories": {
       "output": "build"
     },
@@ -100,7 +105,6 @@
     "typescript": "^5.3.3",
     "unicode-regex": "^4.0.0",
     "unist-builder": "^4.0.0",
-    "unist-util-select": "^5.1.0",
     "unist-util-visit": "^5.0.0",
     "unist-util-visit-children": "^3.0.0"
   },
@@ -113,6 +117,8 @@
     "@codemirror/text": "^0.19.6",
     "@codemirror/view": "^6.23.0",
     "codemirror": "^6.0.1",
+    "electron-log": "^5.1.1",
+    "electron-updater": "^6.1.7",
     "emoji-toolkit": "^8.0.0",
     "highlight.js": "^11.9.0",
     "html-to-pdfmake": "^2.5.2",
@@ -154,7 +160,6 @@
     "unified": "^11.0.4",
     "unified-stream": "^3.0.0",
     "unist-builder": "^4.0.0",
-    "unist-util-select": "^5.1.0",
     "unist-util-visit": "^5.0.0",
     "unist-util-visit-children": "^3.0.0",
     "vfile-reporter": "^8.1.0"
