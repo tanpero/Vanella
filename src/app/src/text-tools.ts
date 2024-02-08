@@ -72,4 +72,23 @@ export const joinPath = (...paths: string[]): string => {
   return joinedPath
 }
 
+export const extractExtName = (filePath: string): string => {
+  if (typeof filePath !== 'string') {
+    throw new TypeError('Path must be a string')
+  }
 
+  const lastDotIndex = filePath.lastIndexOf('.')
+  if (lastDotIndex === -1 || lastDotIndex === 0 || lastDotIndex === filePath.length - 1) {
+    return ''
+  }
+
+  const lastSlashIndex = filePath.lastIndexOf('/')
+  const lastBackslashIndex = filePath.lastIndexOf('\\')
+  const lastSeparatorIndex = Math.max(lastSlashIndex, lastBackslashIndex)
+
+  if (lastDotIndex < lastSeparatorIndex) {
+    return ''
+  }
+
+  return filePath.slice(lastDotIndex)
+}

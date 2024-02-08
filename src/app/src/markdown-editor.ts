@@ -11,6 +11,7 @@ import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 
 import placeholders from './placeholder-decoration'
 import { forEditor, forViewer } from './scrolling-observer'
+import { processorToExport } from './markdown-processor'
 
 declare let editorView: EditorView
 
@@ -26,6 +27,7 @@ const theme = EditorView.theme({
 
 let scrollElementIndex: number
 
+let markdownSource: string
 let htmlFragment: string
 
 type MarkdownProcessor = (markdown: string) => string
@@ -34,7 +36,8 @@ export const run = (editorSelector: string,
                     editorContainerSelector: string,
                     viewerSelector: string,
                     viewerContainerSelector: string,
-                    markdownProcessor: MarkdownProcessor
+                    markdownProcessorToView: MarkdownProcessor,
+                    markdownProcessorToExport: MarkdownProcessor,
                   ) => {
   const doc = ''
   let currentArea = ''
@@ -54,7 +57,8 @@ export const run = (editorSelector: string,
   
   let updateListener = EditorView.updateListener.of(source => {
     if (source.docChanged) {
-      htmlFragment = markdownProcessor(source.state.doc.toString())
+      markdownSource = source.state.doc.toString()
+      htmlFragment = markdownProcessorToView(markdownSource)
       viewer.innerHTML = htmlFragment
     }
   })
@@ -109,4 +113,4 @@ export const upload = (content: string) => {
 
 export const download = () => editorView.state.doc.toString()
 
-export const exportHTML = () => htmlFragment
+export const exportHTML = async () => String(await processorToExport.process(markdownSource))

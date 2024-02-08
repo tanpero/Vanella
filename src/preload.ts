@@ -41,11 +41,19 @@ contextBridge.exposeInMainWorld('vanella', {
         }
     },
 
-    async exportHTML(filePath, contentToExport ) {
+    async exportHTML(filePath, contentToExport) {
         try {
             ipcRenderer.send('to-generate-html', { filePath, contentToExport })
         } catch (error) {
             console.error('Error generating html: ', error)
+        }
+    },
+
+    async readFileAsBase64 (filePath) {
+        try {
+            return await ipcRenderer.invoke('read-file-as-base64', { filePath })
+        } catch (error) {
+            console.error('Error reading file: ', error)
         }
     },
 
@@ -102,7 +110,6 @@ contextBridge.exposeInMainWorld('vanella', {
         ipcRenderer.on('generated-directory-tree-view', (event, html) => {
             callbackOfDirectoryTreeView(html)
         })
-
     },
 })
 

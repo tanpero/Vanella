@@ -3,6 +3,8 @@ import { join, dirname, basename, extname } from 'path'
 import * as fs from 'fs'
 import { generateHTML } from './html-generator'
 import { generateTreeHTML } from './directory-tree'
+import mime, { Mime } from 'mime'
+import { encode } from 'node-base64-image'
 
 const main = () => {
     onReady()
@@ -114,9 +116,19 @@ const mainWindowListens = (mainWindow: BrowserWindow) => {
         try {
             await fs.promises.writeFile(
                 join(dirname(filePath), baseName + '.html'),
-                generateHTML(baseName, contentToExport, true))
+                await generateHTML(baseName, contentToExport, true))
         } catch (error) {
             console.error('Error exporting HTML:', error)
+        }
+    })
+
+    ipcMain.handle('read-file-as-base64', async (event, { filePath }) => {
+
+        let result: string = fs.readFileSync(filePath).toString('base64')
+        try {
+            return result
+        } catch (error) {
+            console.log(error)
         }
     })
 }

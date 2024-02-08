@@ -6,6 +6,7 @@ import remarkMath from 'remark-math'
 import remarkImages from 'remark-images'
 import remarkUnwrapImages from 'remark-unwrap-images'
 import remarkGfm from 'remark-gfm'
+import remarkEmbedImage from './embeded-local-image-generator'
 
 import rehypeStringify from 'rehype-stringify'
 import rehypeSlug from 'rehype-slug'
@@ -41,4 +42,23 @@ const processor = unified()
   .use(rehypeFormat)
   .use(rehypeStringify)
 
-export default processor
+export { processor as processorToView }
+export const processorToExport = unified()
+  .use(remarkParse)
+  .use(remarkGfm)
+  .use(remarkMath)
+  .use(remarkImages)
+  .use(remarkUnwrapImages)
+  .use(remarkEmbedImage, {
+    getDirectory: () => getGlobalDirPath(),
+  })
+  .use(generateTOC(6))
+
+  .use(remarkRehype)
+  .use(rehypeDocument, { title: '' })
+  .use(rehypeSlug)
+  .use(rehypeSanitize)
+  .use(highlight)
+  .use(rehypeMathjax)
+  .use(rehypeFormat)
+  .use(rehypeStringify)

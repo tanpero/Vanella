@@ -2,7 +2,7 @@ import './styles/main.scss'
 import './styles/article.scss'
 import './title-bar-controllers'
 import { download, exportHTML, run, upload } from './markdown-editor'
-import processor from './markdown-processor'
+import { processorToView as processor } from './markdown-processor'
 
 import 'highlight.js/styles/monokai.css'
 import ShortcutListener from './shortcut-listener'
@@ -181,6 +181,11 @@ shortcut.when('Ctrl W').to(() => {
   vanella.toClose()
 })
 
+const toHTML = async () => {
+  let html = await exportHTML()
+  vanella.exportHTML(stateManager.getFilePath(), html)
+}
+
 shortcut.when('Ctrl P').to(() => {
   switch (stateManager.getStatus()) {
     case DocumentStatus.New:
@@ -188,7 +193,7 @@ shortcut.when('Ctrl P').to(() => {
       break
     case DocumentStatus.UnsavedChanges:
     case DocumentStatus.Saved:
-      vanella.exportHTML(stateManager.getFilePath(), exportHTML())
+      toHTML()
       break
   }
 })

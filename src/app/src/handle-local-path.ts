@@ -1,9 +1,8 @@
 import { resolvePath } from "./text-tools"
 
-const isLocalPath = url =>
+export const isLocalPath = url =>
   // 判断是否为本地路径
   /^(\.\/|\.\.\/)/.test(url) ||
-      !/^#/.test(url) &&
       !/^https?:\/\//i.test(url) &&
       !/^(localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|[a-zA-Z0-9-]+(\.[a-zA-Z]{2,})+)(:\d{1,5})?/.test(url)
 
@@ -17,7 +16,7 @@ export const handleLocalPath = options => tree => {
     if (node.type === 'element') {
       switch (node.tagName) {
         case 'a': {
-          let url = node.properties.href.trim()
+          let url = node.properties.href
           if (isLocalPath(url)) {
             const parentDirectory = getDirectory()
             const absolutePath = resolvePath(parentDirectory, url)

@@ -52,6 +52,13 @@ import_electron.contextBridge.exposeInMainWorld("vanella", {
       console.error("Error generating html: ", error);
     }
   },
+  async readFileAsBase64(filePath) {
+    try {
+      return await import_electron.ipcRenderer.invoke("read-file-as-base64", { filePath });
+    } catch (error) {
+      console.error("Error reading file: ", error);
+    }
+  },
   bindFileManipulation({
     "to-check-if-be-saved": callbackToCheckIfBeSaved,
     "file-content": callbackOfFileContent,

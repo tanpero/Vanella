@@ -123,6 +123,7 @@ ul {
     position: relative; // 使 li 相对定位，以便容纳子级 ul
     padding-left: 1em; // 左侧缩进，以容纳圆点或其他列表样式
     margin-bottom: 0.5em; // 项目之间的间距
+    line-height: 1.5;
     &::before {
       content: '\2022'; // 使用圆点作为项目标记
       position: absolute;
@@ -142,6 +143,7 @@ ol {
     position: relative;
     padding-left: 1em;
     margin-bottom: 0.5em;
+    line-height: 1.5;
     &::before {
       content: counter(li) ". ";
       counter-increment: li;
