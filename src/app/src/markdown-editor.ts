@@ -37,7 +37,6 @@ export const run = (editorSelector: string,
                     viewerSelector: string,
                     viewerContainerSelector: string,
                     markdownProcessorToView: MarkdownProcessor,
-                    markdownProcessorToExport: MarkdownProcessor,
                   ) => {
   const doc = ''
   let currentArea = ''
