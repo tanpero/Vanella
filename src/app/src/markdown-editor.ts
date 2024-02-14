@@ -12,6 +12,7 @@ import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import placeholders from './placeholder-decoration'
 import { forEditor, forViewer } from './scrolling-observer'
 import { processorToExport } from './markdown-processor'
+import { pasteHTMLAsMarkdown } from './paste-as-markdown'
 
 declare let editorView: EditorView
 
@@ -98,6 +99,8 @@ export const run = (editorSelector: string,
     forViewer(editorView, editorContainer, viewer, viewerContainer)
   })
   editorView.focus()
+
+  pasteHTMLAsMarkdown(editor)
 }
 
 export const upload = (content: string) => {
