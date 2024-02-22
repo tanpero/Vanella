@@ -1,4 +1,4 @@
-import { BrowserWindow, app, ipcMain, dialog, shell, ipcRenderer } from 'electron'
+import { BrowserWindow, app, ipcMain, dialog, shell, ipcRenderer, globalShortcut } from 'electron'
 import { join, dirname, basename, extname } from 'path'
 import * as fs from 'fs'
 import { generateHTML } from './html-generator'
@@ -15,6 +15,10 @@ const onReady = () => {
     app.whenReady().then(() => {
         const mainWindow = createWindow()
         mainWindowListens(mainWindow)
+
+        // 屏蔽掉 Electron 的 Ctrl - 与 Ctrl = 默认行为
+        globalShortcut.register('CommandOrControl+-', () => {})
+        globalShortcut.register('CommandOrControl+Shift+=', () => {})
     })
 }
 
@@ -29,7 +33,15 @@ const toGenerateTreeView = (event, filePath) => {
     }, 500)
 }
 
+
+
+
 const mainWindowListens = (mainWindow: BrowserWindow) => {
+
+    mainWindow.webContents.on("did-finish-load", (event, args) => {
+        mainWindow.webContents.setZoomFactor(1)
+        mainWindow.webContents.setVisualZoomLevelLimits(1, 1)
+    })
 
     ipcMain.on('minimize', () => mainWindow.minimize())
     ipcMain.on('maximize', () => mainWindow.maximize())

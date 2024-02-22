@@ -147,6 +147,10 @@ var onReady = () => {
   import_electron.app.whenReady().then(() => {
     const mainWindow = createWindow();
     mainWindowListens(mainWindow);
+    import_electron.globalShortcut.register("CommandOrControl+-", () => {
+    });
+    import_electron.globalShortcut.register("CommandOrControl+Shift+=", () => {
+    });
   });
 };
 var lastDirPath = "";
@@ -158,6 +162,10 @@ var toGenerateTreeView = (event, filePath) => {
   }, 500);
 };
 var mainWindowListens = (mainWindow) => {
+  mainWindow.webContents.on("did-finish-load", (event, args) => {
+    mainWindow.webContents.setZoomFactor(1);
+    mainWindow.webContents.setVisualZoomLevelLimits(1, 1);
+  });
   import_electron.ipcMain.on("minimize", () => mainWindow.minimize());
   import_electron.ipcMain.on("maximize", () => mainWindow.maximize());
   import_electron.ipcMain.on("unmaximize", () => mainWindow.unmaximize());
