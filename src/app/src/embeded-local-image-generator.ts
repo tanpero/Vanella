@@ -1,4 +1,3 @@
-import isRelativeUrl from 'is-relative-url'
 import mime from 'mime'
 import { visit } from 'unist-util-visit'
 import { extractExtName, resolvePath } from './text-tools'

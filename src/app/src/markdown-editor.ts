@@ -13,6 +13,8 @@ import placeholders from './placeholder-decoration'
 import { forEditor, forViewer } from './scrolling-observer'
 import { processorToExport } from './markdown-processor'
 import { pasteHTMLAsMarkdown } from './paste-as-markdown'
+import { EditorState } from '@codemirror/state'
+import { setupEditor } from './editor/view'
 
 declare let editorView: EditorView
 
@@ -24,9 +26,6 @@ const theme = EditorView.theme({
     borderLeftColor: "lightyellow",
   },
 })
-
-
-let scrollElementIndex: number
 
 let markdownSource: string
 let htmlFragment: string
@@ -47,6 +46,8 @@ export const run = (editorSelector: string,
   const editorContainer = document.querySelector(editorContainerSelector) as HTMLDivElement
   const viewerContainer = document.querySelector(viewerContainerSelector) as HTMLDivElement
 
+  setupEditor(viewer)
+
   editorContainer.addEventListener('mouseenter', () => {
     currentArea = 'editor'
   })
@@ -63,8 +64,7 @@ export const run = (editorSelector: string,
     }
   })
 
-
-  editorView = new EditorView({
+  const editorState = EditorState.create({
     doc,
     extensions: [
       placeholders,
@@ -91,6 +91,11 @@ export const run = (editorSelector: string,
       EditorView.lineWrapping,
       updateListener,
     ],
+  })
+
+
+  editorView = new EditorView({
+    state: editorState,
     parent: editor as HTMLDivElement,
   })
 
