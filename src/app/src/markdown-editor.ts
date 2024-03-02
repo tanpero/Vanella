@@ -14,7 +14,6 @@ import { forEditor, forViewer } from './scrolling-observer'
 import { processorToExport } from './markdown-processor'
 import { pasteHTMLAsMarkdown } from './paste-as-markdown'
 import { EditorState } from '@codemirror/state'
-import { setupVisibleContentEditor } from './editor/visible-content-editor'
 
 declare let editorView: EditorView
 
@@ -45,8 +44,6 @@ export const run = (editorSelector: string,
   const viewer = document.querySelector(viewerSelector) as HTMLDivElement
   const editorContainer = document.querySelector(editorContainerSelector) as HTMLDivElement
   const viewerContainer = document.querySelector(viewerContainerSelector) as HTMLDivElement
-
-  setupVisibleContentEditor(viewer)
 
   editorContainer.addEventListener('mouseenter', () => {
     currentArea = 'editor'

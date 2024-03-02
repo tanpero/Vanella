@@ -1,8 +1,7 @@
 import './styles/main.scss'
 import './styles/article.scss'
 import './title-bar-controllers'
-import { download, exportHTML, run, upload } from './markdown-editor'
-import { processorToView as processor } from './markdown-processor'
+import { exportHTML } from './markdown-editor'
 
 import 'highlight.js/styles/monokai.css'
 import ShortcutListener from './shortcut-listener'
@@ -10,6 +9,7 @@ import { DocumentManager, DocumentStatus } from './document-manager'
 import { extractFileName } from './text-tools'
 import { willClose, willSave } from './interaction-messages'
 import { setGlobalDirPath, setGlobalFilePath } from './global-context-manager'
+import { setup, upload, download } from './editor/setup'
 
 
 declare const vanella: any
@@ -36,16 +36,7 @@ const setCurrentFile = filePath => {
   vanella.openFile(filePath)
 }
 
-run('#editor', '.left-pane', '#viewer', '.right-pane', (markdown: string) => {
-  updateTitle()
-  stateManager.modify()
-  let html = ''
-  processor.process(markdown, (err, file) => {
-    if (err) throw err
-    html = String(file)
-  })
-  return html
-})
+setup('markdown', 'document')
 
 vanella.bindFileManipulation({
   'to-check-if-be-saved': () => {
