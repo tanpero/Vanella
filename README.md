@@ -17,3 +17,5 @@ npm install
 npm start
 ```
 
+# Due to my recent academic pressure, Vanella has suspended development until May or June
+
