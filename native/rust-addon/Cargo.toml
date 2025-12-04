@@ -1,0 +1,17 @@
+[package]
+name = "rust_addon"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rust_addon"
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = "2"
+napi-derive = "2"
+sha2 = "0.10"
+hex = "0.4"
+
+[build-dependencies]
+napi-build = "2"

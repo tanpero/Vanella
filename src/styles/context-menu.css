@@ -1,0 +1,19 @@
+.ctx-menu { position: fixed; z-index: 2000; min-width: 220px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: 8px; }
+.dark .ctx-menu { background: #0f172a; border-color: #374151; }
+.ctx-row { display: flex; gap: 6px; padding: 6px 4px; }
+.ctx-group { border-top: 1px solid #e5e7eb; margin-top: 6px; padding-top: 6px; }
+.dark .ctx-group { border-top-color: #374151; }
+.ctx-icon { width: 28px; height: 28px; border-radius: 8px; border: none; background: transparent; cursor: pointer; }
+.ctx-btn { min-width: 28px; height: 28px; padding: 0 8px; border-radius: 8px; border: none; background: transparent; cursor: pointer; font-weight: 600; }
+.ctx-item { display: block; width: 100%; text-align: left; padding: 6px 10px; border: none; background: transparent; cursor: pointer; border-radius: 6px; }
+.ctx-item:hover, .ctx-btn:hover, .ctx-icon:hover { background: #f3f4f6; }
+.dark .ctx-item:hover, .dark .ctx-btn:hover, .dark .ctx-icon:hover { background: #1f2937; }
+.ctx-item[disabled] { opacity: .5; cursor: default; }
+.ctx-sub { position: relative; }
+.ctx-sub > summary { list-style: none; cursor: pointer; padding: 6px 10px; border-radius: 6px; }
+.ctx-sub[open] > summary { background: #f3f4f6; }
+.dark .ctx-sub[open] > summary { background: #1f2937; }
+.ctx-sub > summary::-webkit-details-marker { display: none; }
+.ctx-sub > summary::after { content: '›'; float: right; opacity: .6; }
+.ctx-sub[open] > summary::after { content: '‹'; }
+.ctx-sub > .ctx-item { margin-left: 6px; }
