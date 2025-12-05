@@ -131,6 +131,11 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
     switch (node.type) {
       case 'paragraph': {
         const text = (node.children || []).map((c) => (c.value || '')).join('')
+        const trimmed = (text || '').trim()
+        if (/^\[\s*toc\s*\]$/i.test(trimmed)) {
+          const tocType = (schema.nodes as unknown as { toc_block?: import('prosemirror-model').NodeType }).toc_block
+          return tocType?.create() || schema.nodes.paragraph.create(null, [])
+        }
         const bracket = /^\[\s*[\s\S]*\s*\]$/.exec(text)
         if (bracket) {
           const raw = text.slice(2, -2)
@@ -248,6 +253,9 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
       const body = env ? `\\begin{${env}}\n${raw}\n\\end{${env}}` : raw
       const value = body
       return { type: 'math', value }
+    }
+    if (name === 'toc_block') {
+      return { type: 'paragraph', children: [{ type: 'text', value: '[TOC]' }] }
     }
     return null
   }

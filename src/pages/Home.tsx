@@ -45,6 +45,8 @@ export default function Home() {
         name: 'welcome.md',
         content: String.raw`# Welcome to Markdown Editor
 
+[TOC]
+
 This is a **modern** markdown editor with *real-time preview*.
 
 ## Features
@@ -63,7 +65,7 @@ Visit [OpenAI](https://openai.com) and edit the link in place.
 
 ### Images
 
-![Sample image](https://via.placeholder.com/640x360.png?text=Sample+Image)
+![Sample image](https://pixabay.com/get/gb868cfa26a54e8e17b43141f62f5db9e86e3083977f48bece512a3c6447e51d0db57ebdc39f6d0b4f4216ac340f5076e.jpg)
 
 If caption below is enabled in settings, the alt text appears centered under the image.
 
@@ -88,18 +90,41 @@ hello('World')
 
 ### Mathematics
 
-Inline: $E = mc^2$
+Inline: $\int^b_a f(x) \mathrm{d}x = F(b) - F(a)$
 
 Block:
 
 $$
-\begin{equation}
 \iiint\limits_{0<x,y,z<1} f(x,y,z)
 {\mathrm d}x {\mathrm d}y {\mathrm d}z =
 \mathcal{F}(x) = \sum_{k=0}^\infty
 \oint_0^1 f_k(x,t), \mathrm{d}t
-\end{equation}
 $$
+
+### Mermaid Graph
+
+Mermaid diagrams are supported. Here's an example:
+
+\`\`\`mermaid
+graph TD
+A[Start] --> B{Choice}
+B -->|Yes| C[Go]
+B -->|No| D[Stop]
+\`\`\`
+
+### ABC Score
+
+\`\`\`abc
+X:1
+T:Jazz
+M:6/8
+L:1/8
+K:G
+GFG BAB | gfg gab | GFG BAB | d2A AFD |
+GFG BAB | gfg gab | age edB |1 dBA AFD :|2 dBA ABd |:
+efe edB | dBA ABd | efe edB | gdB ABd |
+efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
+\`\`\`
 
 **Enjoy writing!** 🚀`
 .replace(/\\`/g, '`').replace(/\\\$/g, '$'),
@@ -195,9 +220,9 @@ $$
     }
   }
   
-  const handleExportHTML = () => {
+  const handleExportHTML = async () => {
     if (activeFile?.content) {
-      exportHTML(activeFile.content, activeFile.name.replace('.md', '.html'))
+      await exportHTML(activeFile.content, activeFile.name.replace('.md', '.html'))
     }
   }
   

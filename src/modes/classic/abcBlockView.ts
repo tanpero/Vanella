@@ -114,24 +114,26 @@ export class AbcBlockView {
     this.preview = preview
     this.rowEl = row
 
-    const inside = this.isSelectionInside()
-    if (!inside) {
-      row.style.display = 'none'
-      preview.style.display = 'block'
-    } else {
-      setTimeout(() => { this.cm?.focus() }, 0)
-    }
+    row.style.display = 'flex'
+    const initialSrc = cm.state.doc.toString().trim()
+    preview.style.display = initialSrc.length ? 'block' : 'none'
+    if (this.isSelectionInside()) setTimeout(() => { this.cm?.focus() }, 0)
 
     this.renderScore(cm.state.doc.toString())
     this.renderLineNumbers(gutter, node.textContent || '')
 
-    host.addEventListener('focusin', () => { if (this.rowEl) this.rowEl.style.display = 'flex' })
+    host.addEventListener('focusin', () => {
+      if (this.rowEl) this.rowEl.style.display = 'flex'
+      const cur = this.cm?.state.doc.toString().trim() || ''
+      this.preview.style.display = cur.length ? 'block' : 'none'
+    })
     host.addEventListener('focusout', () => {
       setTimeout(() => {
         const focused = !!this.cm?.hasFocus
         if (!focused) {
-          if (this.rowEl) this.rowEl.style.display = 'none'
-          this.preview.style.display = 'block'
+          const cur = this.cm?.state.doc.toString().trim() || ''
+          if (this.rowEl) this.rowEl.style.display = cur.length ? 'none' : 'flex'
+          this.preview.style.display = cur.length ? 'block' : 'none'
         }
       }, 120)
     })
@@ -141,6 +143,8 @@ export class AbcBlockView {
       const tr = this.view.state.tr.setSelection(TextSelection.create(this.view.state.doc, end - 1))
       this.view.dispatch(tr)
       if (this.rowEl) this.rowEl.style.display = 'flex'
+      const cur = this.cm?.state.doc.toString().trim() || ''
+      this.preview.style.display = cur.length ? 'block' : 'none'
       this.cm?.focus()
     })
   }
@@ -155,10 +159,11 @@ export class AbcBlockView {
       const gutter = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
       if (gutter) this.renderLineNumbers(gutter, text)
     }
+    const hasSrc = (text.trim().length > 0)
     const inside = this.isSelectionInside()
     const row = this.rowEl
-    if (row) row.style.display = inside ? 'flex' : 'none'
-    this.preview.style.display = 'block'
+    if (row) row.style.display = (!hasSrc || inside) ? 'flex' : 'none'
+    this.preview.style.display = hasSrc ? 'block' : 'none'
     return true
   }
 
@@ -185,6 +190,7 @@ export class AbcBlockView {
       const paper = document.createElement('div')
       paper.style.display = 'inline-block'
       paper.style.margin = '0 auto'
+      paper.style.scale = '0.8'
       this.preview.appendChild(paper)
       ABCJS.renderAbc(paper, code, { responsive: 'resize' })
       const isDark = useEditorStore.getState().config.theme === 'dark'

@@ -97,6 +97,13 @@ const nodes = {
     toDOM: () => ['div', { class: 'pm-abc-block' }, 0] as const,
     parseDOM: [{ tag: 'div.pm-abc-block' }]
   }
+  , toc_block: {
+    group: 'block',
+    content: '',
+    marks: '',
+    toDOM: () => ['div', { class: 'pm-toc-block' }] as const,
+    parseDOM: [{ tag: 'div.pm-toc-block' }]
+  }
 }
 
 const marks = {

@@ -21,6 +21,7 @@ import { MermaidBlockView } from './mermaidBlockView'
 import { ImageView } from './imageView'
 import { buildMathInlineDecorations } from '@/modes/classic/mathInline'
 import { AbcBlockView } from './abcBlockView'
+import { TocView, TOC_VIEWS } from './tocView'
 import type { Node as PMNode, NodeType, MarkType } from 'prosemirror-model'
 
 function markerDecorations(state: EditorState): DecorationSet {
@@ -153,7 +154,6 @@ function markerDecorations(state: EditorState): DecorationSet {
 export default function ClassicEditor() {
   const mountRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
-  const ignoreNextDocUpdateRef = useRef<boolean>(false)
   const { activeFile, updateFileContent, config, markdownSource, setPmView, showContextMenu } = useEditorStore()
   const isDark = config.theme === 'dark'
   const captionCentered = !!config.imageCaptionBelowCentered
@@ -185,6 +185,16 @@ export default function ClassicEditor() {
               if (!parent || !parent.isTextblock) return null
               const baseStart = $pos.start()
               const text = parent.textContent || ''
+              const mToc = /^\s*\[\s*toc\s*\]\s*$/i.exec(text)
+              if (mToc) {
+                const start = $pos.start()
+                const end = $pos.end()
+                const tocType = (schema.nodes as unknown as { toc_block?: NodeType }).toc_block
+                if (tocType) {
+                  const tr = newState.tr.replaceRangeWith(start, end, tocType.create())
+                  return tr
+                }
+              }
               const mImg = /!\[([^\]]*?)\]\(([^)]+?)\)/.exec(text)
               if (mImg) {
                 const idx = mImg.index
@@ -573,19 +583,18 @@ export default function ClassicEditor() {
           math_block: (node, view, getPos) => new MathBlockView(node, view, getPos as () => number),
           mermaid_block: (node, view, getPos) => new MermaidBlockView(node, view, getPos as () => number),
           abc_block: (node, view, getPos) => new AbcBlockView(node, view, getPos as () => number),
+          toc_block: (node, view, getPos) => new TocView(node, view, getPos as () => number),
           list_item: (node, view, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, view, getPos as () => number) : undefined),
           image: (node, view, getPos) => new ImageView(node, view, getPos as () => number, captionCentered)
         },
         dispatchTransaction: tr => {
           const newState = view.state.apply(tr)
           view.updateState(newState)
-          if (tr.docChanged) {
-            ignoreNextDocUpdateRef.current = true
-            ;(async () => {
-              const md = await pmDocToMarkdown(newState.doc as PMNode)
-              updateFileContent(md)
-            })()
-          }
+          ;(async () => {
+            const md = await pmDocToMarkdown(newState.doc as PMNode)
+            updateFileContent(md)
+          })()
+          TOC_VIEWS.forEach(v => v.render())
         }
       })
       viewRef.current = view
@@ -618,19 +627,18 @@ export default function ClassicEditor() {
         math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as () => number),
         mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as () => number),
         abc_block: (node, v, getPos) => new AbcBlockView(node, v, getPos as () => number),
+        toc_block: (node, v, getPos) => new TocView(node, v, getPos as () => number),
         list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as () => number) : undefined),
         image: (node, v, getPos) => new ImageView(node, v, getPos as () => number, captionCentered)
       },
       dispatchTransaction: tr => {
         const ns = newView.state.apply(tr)
         newView.updateState(ns)
-        if (tr.docChanged) {
-          ignoreNextDocUpdateRef.current = true
-          ;(async () => {
-            const md = await pmDocToMarkdown(ns.doc as PMNode)
-            updateFileContent(md)
-          })()
-        }
+        ;(async () => {
+          const md = await pmDocToMarkdown(ns.doc as PMNode)
+          updateFileContent(md)
+        })()
+        TOC_VIEWS.forEach(v => v.render())
       }
     })
     view.destroy()
@@ -654,19 +662,18 @@ export default function ClassicEditor() {
         math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as () => number),
         mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as () => number),
         abc_block: (node, v, getPos) => new AbcBlockView(node, v, getPos as () => number),
+        toc_block: (node, v, getPos) => new TocView(node, v, getPos as () => number),
         list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as () => number) : undefined),
         image: (node, v, getPos) => new ImageView(node, v, getPos as () => number, captionCentered)
       },
       dispatchTransaction: tr => {
         const ns = newView.state.apply(tr)
         newView.updateState(ns)
-        if (tr.docChanged) {
-          ignoreNextDocUpdateRef.current = true
-          ;(async () => {
-            const md = await pmDocToMarkdown(ns.doc as PMNode)
-            updateFileContent(md)
-          })()
-        }
+        ;(async () => {
+          const md = await pmDocToMarkdown(ns.doc as PMNode)
+          updateFileContent(md)
+        })()
+        TOC_VIEWS.forEach(v => v.render())
       }
     })
     view.destroy()
@@ -679,13 +686,13 @@ export default function ClassicEditor() {
     if (!view) return
     ;(async () => {
       try {
-        if (ignoreNextDocUpdateRef.current) { ignoreNextDocUpdateRef.current = false; return }
-        const doc = await markdownToPmDoc(schema, markdownSource || activeFile?.content || '')
+        const doc = await markdownToPmDoc(schema, activeFile?.content || '')
         const newState = EditorState.create({ doc: doc as PMNode, schema, plugins: view.state.plugins })
         view.updateState(newState)
+        TOC_VIEWS.forEach(v => v.render())
       } catch (e) { console.warn(e) }
     })()
-  }, [activeFile?.id, activeFile?.content, markdownSource])
+  }, [activeFile?.id])
 
   return (
     <div

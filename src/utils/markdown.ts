@@ -11,6 +11,10 @@ export const parseMarkdown = (content: string): string => {
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkBreaks)
+    .use(remarkHeadingAnchors)
+    .use(remarkMermaid)
+    .use(remarkAbc)
+    .use(remarkToc)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeStringify, { allowDangerousHtml: true })
     .processSync(content)
@@ -107,4 +111,125 @@ export const insertMarkdownSyntax = (
 
 export const generateId = (): string => {
   return Math.random().toString(36).substr(2, 9)
+}
+
+function slugify(input: string, seen: Record<string, number>): string {
+  const base = (input || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s]+/g, '-')
+    .replace(/[^a-z0-9\-\u00A0-\uFFFF]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+  const count = seen[base] || 0
+  seen[base] = count + 1
+  return count ? `${base}-${count}` : base
+}
+
+type MdastData = { hProperties?: { id?: string } ; id?: string ; [k: string]: unknown }
+type MdastNode = { type: string; depth?: number; children?: MdastNode[]; data?: MdastData; value?: string; url?: string; lang?: string }
+type MdastRoot = { type: string; children?: MdastNode[] }
+
+function remarkHeadingAnchors() {
+  return (tree: MdastRoot) => {
+    const seen: Record<string, number> = {}
+    const visit = (node: MdastNode | MdastRoot | undefined) => {
+      if (!node || typeof node !== 'object') return
+      if (node.type === 'heading') {
+        const text = mdastToString(node as unknown as { type: string })
+        const id = slugify(text, seen)
+        const n = node as MdastNode
+        n.data = n.data || {}
+        n.data.hProperties = n.data.hProperties || {}
+        n.data.id = id
+        n.data.hProperties.id = id
+      }
+      const children = (node as MdastNode).children || []
+      for (const child of children) visit(child)
+    }
+    visit(tree)
+  }
+}
+
+function remarkToc() {
+  return (tree: MdastRoot) => {
+    const headings: { depth: number; title: string; id: string }[] = []
+    const visit = (node: MdastNode | MdastRoot | undefined) => {
+      if (!node || typeof node !== 'object') return
+      if (node.type === 'heading') {
+        const title = mdastToString(node as unknown as { type: string })
+        const data = (node as MdastNode).data
+        const id = (data && (data.id || (data.hProperties && data.hProperties.id))) || ''
+        headings.push({ depth: Math.max(1, Math.min(6, (node as MdastNode).depth || 1)), title, id })
+      }
+      const children = (node as MdastNode).children || []
+      for (const child of children) visit(child)
+    }
+    visit(tree)
+
+    const findAndReplaceToc = (node: MdastNode | MdastRoot | undefined, parent?: MdastRoot | MdastNode, idx?: number) => {
+      if (!node || typeof node !== 'object') return
+      if (node.type === 'paragraph') {
+        const text = mdastToString(node as unknown as { type: string }).trim().toLowerCase()
+        if (text === '[toc]') {
+          const html = `<div class="pm-toc-block"><ul>` +
+            headings.map(h => `<li data-depth="${h.depth}"><a href="#${h.id}">${escapeHtml(h.title)}</a></li>`).join('') +
+            `</ul></div>`
+          const htmlNode: MdastNode = { type: 'html', value: html }
+          if (parent && typeof idx === 'number' && parent.children) parent.children[idx] = htmlNode
+          return
+        }
+      }
+      const children = (node as MdastNode).children || []
+      for (let i = 0; i < children.length; i++) findAndReplaceToc(children[i], node as MdastNode, i)
+    }
+    findAndReplaceToc(tree)
+  }
+}
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function remarkMermaid() {
+  return (tree: MdastRoot) => {
+    const visit = (node: MdastNode | MdastRoot | undefined, parent?: MdastNode | MdastRoot, idx?: number) => {
+      if (!node || typeof node !== 'object') return
+      if ((node as MdastNode).type === 'code' && typeof (node as MdastNode).value === 'string') {
+        const n = node as MdastNode
+        const lang = n.lang || ''
+        if ((lang || '').toLowerCase() === 'mermaid' && parent && typeof idx === 'number' && parent.children) {
+          const htmlNode: MdastNode = { type: 'html', value: `<div class="mermaid">\n${(n.value || '')}\n</div>` }
+          parent.children[idx] = htmlNode
+          return
+        }
+      }
+      const children = (node as MdastNode).children || []
+      for (let i = 0; i < children.length; i++) visit(children[i], node as MdastNode, i)
+    }
+    visit(tree)
+  }
+}
+
+function remarkAbc() {
+  return (tree: MdastRoot) => {
+    const visit = (node: MdastNode | MdastRoot | undefined, parent?: MdastNode | MdastRoot, idx?: number) => {
+      if (!node || typeof node !== 'object') return
+      if ((node as MdastNode).type === 'code' && typeof (node as MdastNode).value === 'string') {
+        const n = node as MdastNode
+        const lang = n.lang || ''
+        if ((lang || '').toLowerCase() === 'abc' && parent && typeof idx === 'number' && parent.children) {
+          const htmlNode: MdastNode = { type: 'html', value: `<div class="abc-block" data-src="${escapeHtml((n.value || '').replace(/"/g, '&quot;'))}"></div>` }
+          parent.children[idx] = htmlNode
+          return
+        }
+      }
+      const children = (node as MdastNode).children || []
+      for (let i = 0; i < children.length; i++) visit(children[i], node as MdastNode, i)
+    }
+    visit(tree)
+  }
 }

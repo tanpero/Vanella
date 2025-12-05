@@ -65,7 +65,6 @@ export default function ContextMenu() {
           <button className="ctx-item" onClick={() => runClassicCommand('code_block')}>代码块  Ctrl+Shift+K</button>
           <button className="ctx-item" onClick={() => runClassicCommand('math_block')}>公式块  Ctrl+Shift+M</button>
           <button className="ctx-item" disabled>内容目录</button>
-          <button className="ctx-item" disabled>YAML Front Matter</button>
           <button className="ctx-item" disabled>段落（上方）</button>
           <button className="ctx-item" disabled>段落（下方）</button>
         </details>
