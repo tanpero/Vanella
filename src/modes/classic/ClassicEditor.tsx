@@ -17,6 +17,7 @@ import '@/styles/editor.css'
 import { CodeBlockView } from './codeblockView'
 import { MathBlockView } from './mathBlockView'
 import { TaskItemView } from './taskItemView'
+import { MermaidBlockView } from './mermaidBlockView'
 import { ImageView } from './imageView'
 import { buildMathInlineDecorations } from '@/modes/classic/mathInline'
 
@@ -250,9 +251,15 @@ export default function ClassicEditor() {
                 const start = state.selection.$from.start()
                 const end = state.selection.$from.end()
                 const lang = (m[1] || '').trim()
-                const tr = state.tr.setBlockType(start, end, schema.nodes.code_block, { language: lang })
-                tr.deleteRange(start, end)
-                if (dispatch) dispatch(tr)
+                if (lang.toLowerCase() === 'mermaid' && (schema.nodes as any).mermaid_block) {
+                  let tr = state.tr.replaceRangeWith(start, end, (schema.nodes as any).mermaid_block.create())
+                  tr = tr.setSelection(TextSelection.create(tr.doc, start + 1))
+                  if (dispatch) dispatch(tr)
+                } else {
+                  const tr = state.tr.setBlockType(start, end, schema.nodes.code_block, { language: lang })
+                  tr.deleteRange(start, end)
+                  if (dispatch) dispatch(tr)
+                }
                 return true
               }
               const mMath = /^\$\$\s*$/.exec(txt)
@@ -287,6 +294,14 @@ export default function ClassicEditor() {
                 return true
               }
               if ($from.parent.type === schema.nodes.code_block && $from.parent.textContent.length === 0) {
+                const start = $from.start()
+                const end = $from.end()
+                const tr = state.tr.setBlockType(start, end, schema.nodes.paragraph)
+                if (dispatch) dispatch(tr)
+                return true
+              }
+              const mermaidType = (schema.nodes as any).mermaid_block
+              if ($from.parent.type === mermaidType && $from.parent.textContent.length === 0) {
                 const start = $from.start()
                 const end = $from.end()
                 const tr = state.tr.setBlockType(start, end, schema.nodes.paragraph)
@@ -539,6 +554,7 @@ export default function ClassicEditor() {
         nodeViews: {
           code_block: (node, view, getPos) => new CodeBlockView(node, view, getPos as any, isDark),
           math_block: (node, view, getPos) => new MathBlockView(node, view, getPos as any),
+          mermaid_block: (node, view, getPos) => new MermaidBlockView(node, view, getPos as any),
           list_item: (node, view, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, view, getPos as any) : undefined),
           image: (node, view, getPos) => new ImageView(node, view, getPos as any, captionCentered)
         },
@@ -579,6 +595,7 @@ export default function ClassicEditor() {
       nodeViews: {
         code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as any, isDarkNow),
         math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as any),
+        mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as any),
         list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as any) : undefined),
         image: (node, v, getPos) => new ImageView(node, v, getPos as any, captionCentered)
       },
@@ -610,6 +627,7 @@ export default function ClassicEditor() {
       nodeViews: {
         code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as any, isDarkNow),
         math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as any),
+        mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as any),
         list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as any) : undefined),
         image: (node, v, getPos) => new ImageView(node, v, getPos as any, captionCentered)
       },

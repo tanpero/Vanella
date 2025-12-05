@@ -81,6 +81,14 @@ const nodes = {
     toDOM: () => ['div', { class: 'pm-math-block' }, 0],
     parseDOM: [{ tag: 'div.pm-math-block' }]
   }
+  , mermaid_block: {
+    group: 'block',
+    content: 'text*',
+    marks: '',
+    attrs: { theme: { default: '' } },
+    toDOM: () => ['div', { class: 'pm-mermaid-block' }, 0],
+    parseDOM: [{ tag: 'div.pm-mermaid-block' }]
+  }
 }
 
 const marks = {

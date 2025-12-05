@@ -125,6 +125,9 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
         return schema.nodes.blockquote.create(null, innerBlocks)
       }
       case 'code':
+        if ((node.lang || '').toLowerCase() === 'mermaid') {
+          return (schema.nodes as any).mermaid_block.create({}, schema.text(node.value || ''))
+        }
         return schema.nodes.code_block.create({ language: node.lang || '' }, schema.text(node.value || ''))
       case 'math': {
         const raw = node.value || ''
@@ -193,6 +196,7 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
       return { type: 'blockquote', children }
     }
     if (name === 'code_block') return { type: 'code', lang: node.attrs.language || '', value: node.textContent || '' }
+    if (name === 'mermaid_block') return { type: 'code', lang: 'mermaid', value: node.textContent || '' }
     if (name === 'ordered_list' || name === 'bullet_list') {
       const ordered = name === 'ordered_list'
       const start = ordered ? (node.attrs.order || 1) : undefined

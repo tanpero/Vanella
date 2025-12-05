@@ -108,8 +108,8 @@ export class MathBlockView {
     preview.className = 'pm-math-block-preview'
     preview.style.padding = '8px'
     preview.style.minHeight = '32px'
-    preview.style.borderTop = '1px solid #e5e7eb'
     preview.style.overflow = 'auto'
+    preview.style.display = 'block'
 
     const box = document.createElement('div')
     box.style.display = 'none'
@@ -254,6 +254,14 @@ export class MathBlockView {
     // center for regular env
     if (!env) {
       this.preview.style.textAlign = 'center'
+      const svg = el.querySelector('svg') as SVGElement | null
+      if (svg) {
+        svg.style.display = 'inline-block'
+        ;(svg.style as any).margin = '0 auto'
+      } else {
+        el.style.display = 'inline-block'
+        ;(el.style as any).margin = '0 auto'
+      }
     } else {
       this.preview.style.textAlign = ''
     }
