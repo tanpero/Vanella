@@ -568,6 +568,68 @@ export default function ClassicEditor() {
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
+    const isDarkNow = config.theme === 'dark'
+    const currentDoc = view.state.doc
+    const plugins = view.state.plugins
+    const mount = mountRef.current
+    if (!mount) return
+    const newState = EditorState.create({ doc: currentDoc as any, schema, plugins })
+    const newView = new EditorView(mount, {
+      state: newState,
+      nodeViews: {
+        code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as any, isDarkNow),
+        math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as any),
+        list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as any) : undefined),
+        image: (node, v, getPos) => new ImageView(node, v, getPos as any, captionCentered)
+      },
+      dispatchTransaction: tr => {
+        const ns = newView.state.apply(tr)
+        newView.updateState(ns)
+        ;(async () => {
+          const md = await pmDocToMarkdown(ns.doc as any)
+          updateFileContent(md)
+        })()
+      }
+    })
+    view.destroy()
+    viewRef.current = newView
+    setPmView(newView)
+  }, [config.theme])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    const isDarkNow = config.theme === 'dark'
+    const currentDoc = view.state.doc
+    const plugins = view.state.plugins
+    const mount = mountRef.current
+    if (!mount) return
+    const newState = EditorState.create({ doc: currentDoc as any, schema, plugins })
+    const newView = new EditorView(mount, {
+      state: newState,
+      nodeViews: {
+        code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as any, isDarkNow),
+        math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as any),
+        list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as any) : undefined),
+        image: (node, v, getPos) => new ImageView(node, v, getPos as any, captionCentered)
+      },
+      dispatchTransaction: tr => {
+        const ns = newView.state.apply(tr)
+        newView.updateState(ns)
+        ;(async () => {
+          const md = await pmDocToMarkdown(ns.doc as any)
+          updateFileContent(md)
+        })()
+      }
+    })
+    view.destroy()
+    viewRef.current = newView
+    setPmView(newView)
+  }, [config.codeblockThemeLight, config.codeblockThemeDark])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
     ;(async () => {
       try {
         const doc = await markdownToPmDoc(schema, markdownSource || activeFile?.content || '')

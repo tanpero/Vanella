@@ -16,7 +16,9 @@ export default function SettingsPanel({ className = '', onClose }: SettingsPanel
     fontSize: config.fontSize,
     tabSize: config.tabSize,
     autoSave: config.autoSave,
-    autoSaveInterval: config.autoSaveInterval
+    autoSaveInterval: config.autoSaveInterval,
+    codeblockThemeLight: config.codeblockThemeLight || 'material-light',
+    codeblockThemeDark: config.codeblockThemeDark || 'monokai'
   })
   
   const isDarkTheme = config.theme === 'dark'
@@ -30,10 +32,12 @@ export default function SettingsPanel({ className = '', onClose }: SettingsPanel
     setLocalConfig({
       theme: 'light',
       fontFamily: 'Consolas, Monaco, monospace',
-      fontSize: 14,
+      fontSize: 15,
       tabSize: 2,
       autoSave: true,
-      autoSaveInterval: 5000
+      autoSaveInterval: 5000,
+      codeblockThemeLight: 'material-light',
+      codeblockThemeDark: 'monokai'
     })
   }
   
@@ -48,6 +52,30 @@ export default function SettingsPanel({ className = '', onClose }: SettingsPanel
   const themes = [
     { value: 'light', label: 'Light' },
     { value: 'dark', label: 'Dark' }
+  ]
+
+  const codeblockThemes = [
+    // light/dark ungrouped list
+    { value: 'material-light', label: 'Material Light' },
+    { value: 'material-dark', label: 'Material Dark' },
+    { value: 'monokai', label: 'Monokai' },
+    { value: 'github-light', label: 'GitHub Light' },
+    { value: 'github-dark', label: 'GitHub Dark' },
+    { value: 'vscode-light', label: 'VSCode Light' },
+    { value: 'vscode-dark', label: 'VSCode Dark' },
+    { value: 'one-dark', label: 'One Dark' },
+    { value: 'dracula', label: 'Dracula' },
+    { value: 'nord', label: 'Nord' },
+    { value: 'solarized-light', label: 'Solarized Light' },
+    { value: 'solarized-dark', label: 'Solarized Dark' },
+    { value: 'tokyo-night', label: 'Tokyo Night' },
+    { value: 'tokyo-night-day', label: 'Tokyo Night Day' },
+    { value: 'tokyo-night-storm', label: 'Tokyo Night Storm' },
+    { value: 'quietlight', label: 'Quiet Light' },
+    { value: 'okaidia', label: 'Okaidia' },
+    { value: 'atomone', label: 'Atom One' },
+    { value: 'eclipse', label: 'Eclipse' },
+    { value: 'gruvbox-dark', label: 'Gruvbox Dark' }
   ]
   
   const tabSizes = [2, 4, 8]
@@ -168,6 +196,62 @@ export default function SettingsPanel({ className = '', onClose }: SettingsPanel
                 </button>
               ))}
             </div>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px',
+              fontSize: '14px',
+              color: isDarkTheme ? '#d1d5db' : '#374151'
+            }}>
+              亮色下的代码块主题
+            </label>
+            <select
+              value={localConfig.codeblockThemeLight}
+              onChange={(e) => setLocalConfig({ ...localConfig, codeblockThemeLight: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: `1px solid ${isDarkTheme ? '#374151' : '#e5e7eb'}`,
+                borderRadius: '6px',
+                backgroundColor: isDarkTheme ? '#374151' : '#ffffff',
+                color: isDarkTheme ? '#d1d5db' : '#374151',
+                fontSize: '14px'
+              }}
+            >
+              {codeblockThemes.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px',
+              fontSize: '14px',
+              color: isDarkTheme ? '#d1d5db' : '#374151'
+            }}>
+              暗色下的代码块主题
+            </label>
+            <select
+              value={localConfig.codeblockThemeDark}
+              onChange={(e) => setLocalConfig({ ...localConfig, codeblockThemeDark: e.target.value })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: `1px solid ${isDarkTheme ? '#374151' : '#e5e7eb'}`,
+                borderRadius: '6px',
+                backgroundColor: isDarkTheme ? '#374151' : '#ffffff',
+                color: isDarkTheme ? '#d1d5db' : '#374151',
+                fontSize: '14px'
+              }}
+            >
+              {codeblockThemes.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
           </div>
         </div>
         

@@ -8,6 +8,8 @@ export interface AppConfig {
   recentFiles: string[]
   defaultExportPath: string
   imageCaptionBelowCentered?: boolean
+  codeblockThemeLight?: string
+  codeblockThemeDark?: string
 }
 
 export interface FileState {

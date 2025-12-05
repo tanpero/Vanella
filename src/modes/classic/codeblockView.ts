@@ -1,106 +1,14 @@
 import type { Node as PMNode } from 'prosemirror-model'
 import type { EditorView as PMEditorView } from 'prosemirror-view'
+import { TextSelection } from 'prosemirror-state'
 import { EditorState as CMState } from '@codemirror/state'
 import { EditorView as CMEditorView, drawSelection, dropCursor, highlightActiveLine } from '@codemirror/view'
 import { keymap } from '@codemirror/view'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
-import { oneDark } from '@codemirror/theme-one-dark'
+import { mapLanguage, LANGUAGE_ITEMS, mapTheme } from '@/modes/shared/codemirrorConfig'
+import { useEditorStore } from '@/stores/editorStore'
 import type { Extension } from '@codemirror/state'
-import { javascript } from '@codemirror/lang-javascript'
-import { html } from '@codemirror/lang-html'
-import { xml } from '@codemirror/lang-xml'
-import { css } from '@codemirror/lang-css'
-import { json } from '@codemirror/lang-json'
-import { sql } from '@codemirror/lang-sql'
-import { java } from '@codemirror/lang-java'
-import { rust } from '@codemirror/lang-rust'
-import { go } from '@codemirror/lang-go'
-import { cpp } from '@codemirror/lang-cpp'
-import { StreamLanguage } from '@codemirror/stream-parser'
-import { sass } from '@codemirror/lang-sass'
-import { less } from '@codemirror/lang-less'
-import { lezer } from '@codemirror/lang-lezer'
-import { shell } from '@codemirror/legacy-modes/mode/shell'
-import { yaml as yamlMode } from '@codemirror/legacy-modes/mode/yaml'
-import { toml as tomlMode } from '@codemirror/legacy-modes/mode/toml'
-import { csharp as csharpLang } from '@replit/codemirror-lang-csharp'
-
-function mapLanguage(name: string | null | undefined): Extension | [] {
-  const lang = (name || '').trim().toLowerCase()
-  switch (lang) {
-    case 'js':
-    case 'javascript':
-    case 'jsx':
-      return javascript({ jsx: true })
-    case 'ts':
-    case 'typescript':
-    case 'tsx':
-      return javascript({ typescript: true, jsx: true })
-    case 'java':
-      return java()
-    case 'c':
-    case 'cpp':
-    case 'c++':
-      return cpp()
-    case 'rs':
-    case 'rust':
-      return rust()
-    case 'go':
-      return go()
-    case 'html':
-      return html()
-    case 'xml':
-      return xml()
-    case 'css':
-      return css()
-    case 'json':
-      return json()
-    case 'sql':
-      return sql()
-    case 'bash':
-    case 'sh':
-    case 'shell':
-      return StreamLanguage.define(shell)
-    case 'yaml':
-    case 'yml':
-      return StreamLanguage.define(yamlMode)
-    case 'toml':
-      return StreamLanguage.define(tomlMode)
-    case 'sass':
-      return sass()
-    case 'less':
-      return less()
-    case 'lezer':
-      return lezer()
-    case 'c#':
-    case 'csharp':
-      return csharpLang()
-    default:
-      return []
-  }
-}
-
-const LANGUAGE_ITEMS = [
-  { name: 'javascript', aliases: ['js', 'jsx'] },
-  { name: 'typescript', aliases: ['ts', 'tsx'] },
-  { name: 'java', aliases: [] },
-  { name: 'cpp', aliases: ['c++', 'c'] },
-  { name: 'rust', aliases: ['rs'] },
-  { name: 'go', aliases: [] },
-  { name: 'html', aliases: [] },
-  { name: 'xml', aliases: [] },
-  { name: 'css', aliases: [] },
-  { name: 'json', aliases: [] },
-  { name: 'sql', aliases: [] },
-  { name: 'shell', aliases: ['bash', 'sh'] },
-  { name: 'yaml', aliases: ['yml'] },
-  { name: 'toml', aliases: [] },
-  { name: 'sass', aliases: [] },
-  { name: 'less', aliases: [] },
-  { name: 'lezer', aliases: [] },
-  { name: 'csharp', aliases: ['c#'] }
-]
 
 export class CodeBlockView {
   node: PMNode
@@ -111,6 +19,7 @@ export class CodeBlockView {
   dark: boolean
   private updating: boolean = false
   private prevLang: string | null | undefined
+  private prevThemeKey?: string
   private langBox!: HTMLDivElement
   private langInput!: HTMLInputElement
   private langList!: HTMLDivElement
@@ -130,28 +39,38 @@ export class CodeBlockView {
     wrapper.style.overflow = 'hidden'
     wrapper.style.margin = '8px 0'
     wrapper.style.display = 'block'
+    wrapper.style.position = 'relative'
     const row = document.createElement('div')
     row.style.display = 'flex'
     row.style.alignItems = 'stretch'
 
     const gutter = document.createElement('div')
     gutter.className = 'pm-code-gutter'
-    gutter.style.width = '48px'
-    gutter.style.flex = '0 0 48px'
-    gutter.style.background = dark ? '#111827' : '#f9fafb'
-    gutter.style.color = dark ? '#6b7280' : '#9ca3af'
-    gutter.style.padding = '8px 8px 8px 12px'
+    gutter.style.width = '36px'
+    gutter.style.flex = '0 0 36px'
+    gutter.style.background = dark ? '#0b1220' : '#f3f4f6'
+    gutter.style.color = dark ? '#9ca3af' : '#9ca3af'
+    gutter.style.padding = '6px 6px 6px 8px'
     gutter.style.boxSizing = 'border-box'
     gutter.style.textAlign = 'right'
     gutter.style.fontFamily = 'Consolas, Monaco, monospace'
-    gutter.style.fontSize = '13px'
+    gutter.style.fontSize = '12px'
     gutter.style.lineHeight = '1.6'
+    gutter.style.userSelect = 'none'
+    gutter.style.pointerEvents = 'none'
+    gutter.setAttribute('aria-hidden', 'true')
+    ;(gutter as any).contentEditable = 'false'
 
     const editorHost = document.createElement('div')
     editorHost.style.flex = '1 1 auto'
     editorHost.style.minWidth = '0'
 
     const initialDoc = node.textContent || ''
+    const { config } = useEditorStore.getState()
+    const chosenTheme = dark ? config.codeblockThemeDark : config.codeblockThemeLight
+    const themeExt = mapTheme(chosenTheme, dark)
+    this.prevThemeKey = chosenTheme
+
     const extensions: Extension[] = [
       history(),
       keymap.of([...defaultKeymap, ...historyKeymap]),
@@ -160,11 +79,12 @@ export class CodeBlockView {
       highlightActiveLine(),
       syntaxHighlighting(defaultHighlightStyle),
       CMEditorView.theme({
-        '&': { fontFamily: 'Consolas, Monaco, monospace', fontSize: '13px' },
+        '&': { fontSize: '15px', transition: 'background-color .25s, color .25s, border-color .25s' },
+        '.cm-scroller, .cm-content, .cm-line': { fontFamily: 'Consolas, Monaco, monospace' },
         '.cm-content': { padding: '8px' }
       }),
       ...([] as any[]).concat(mapLanguage(node.attrs?.language)),
-      dark ? oneDark : []
+      themeExt
     ]
 
     const state = CMState.create({ doc: initialDoc, extensions })
@@ -208,6 +128,11 @@ export class CodeBlockView {
       }, 150)
     })
     wrapper.addEventListener('mousedown', () => { this.cm.focus() })
+    editorHost.addEventListener('mousedown', () => { this.cm.focus() })
+    // allow default click selection behavior; only focus without preventing default
+    // removed pointerdown preventDefault to restore mouse-based cursor placement
+
+    setTimeout(() => { this.cm.focus() }, 0)
 
     // click near bottom to add new line at tail when code block is last
     wrapper.addEventListener('click', (e) => {
@@ -237,7 +162,11 @@ export class CodeBlockView {
     this.node = node
     // Only reconfigure language when actually changed
     const curLang = node.attrs?.language
-    if (curLang !== this.prevLang) {
+    const { config } = useEditorStore.getState()
+    const curDark = config.theme === 'dark'
+    const themeKey = curDark ? config.codeblockThemeDark : config.codeblockThemeLight
+    const needTheme = (this.dark !== curDark) || (this.prevThemeKey !== themeKey)
+    if (curLang !== this.prevLang || needTheme) {
       this.prevLang = curLang
       const langExt = mapLanguage(curLang)
       const baseExt = [
@@ -248,9 +177,33 @@ export class CodeBlockView {
         highlightActiveLine(),
         syntaxHighlighting(defaultHighlightStyle)
       ]
-      const nextExt = ([] as any[]).concat(baseExt, langExt, this.dark ? oneDark : [])
+      this.dark = curDark
+      const themeExt = mapTheme(themeKey, this.dark)
+      this.prevThemeKey = themeKey
+      const nextExt = ([] as any[]).concat(baseExt, langExt, themeExt)
       const state = CMState.create({ doc: this.cm.state.doc.toString(), extensions: nextExt })
       this.cm.setState(state)
+      // update outer styles
+      const wrapper = this.dom
+      if (wrapper) {
+        wrapper.className = `pm-codeblock-cm ${this.dark ? 'dark' : 'light'}`
+        wrapper.style.border = this.dark ? '1px solid #374151' : '1px solid #e5e7eb'
+      }
+      const gutter = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
+      if (gutter) {
+        gutter.style.background = this.dark ? '#0b1220' : '#f3f4f6'
+        gutter.style.color = this.dark ? '#9ca3af' : '#9ca3af'
+      }
+      if (this.langInput) {
+        this.langInput.style.border = this.dark ? '1px solid #374151' : '1px solid #d1d5db'
+        this.langInput.style.background = this.dark ? '#0b1220' : '#ffffff'
+        this.langInput.style.color = this.dark ? '#e5e7eb' : '#111827'
+      }
+      if (this.langList) {
+        this.langList.style.border = this.dark ? '1px solid #374151' : '1px solid #d1d5db'
+        this.langList.style.background = this.dark ? '#0b1220' : '#ffffff'
+        this.langList.style.boxShadow = this.dark ? '0 6px 16px rgba(0,0,0,.35)' : '0 6px 16px rgba(0,0,0,.15)'
+      }
     }
     const text = node.textContent || ''
     const cur = this.cm.state.doc.toString()
@@ -284,43 +237,43 @@ export class CodeBlockView {
   private createLangSelector(current?: string | null, container?: HTMLElement) {
     const box = document.createElement('div')
     box.style.display = 'none'
-    box.style.borderTop = this.dark ? '1px solid #374151' : '1px solid #e5e7eb'
-    box.style.background = this.dark ? '#111827' : '#f9fafb'
-    box.style.padding = '6px 8px'
+    box.style.borderTop = 'none'
+    box.style.background = 'transparent'
+    box.style.padding = '0'
     box.style.fontFamily = 'Consolas, Monaco, monospace'
     box.style.fontSize = '13px'
-    box.style.position = 'relative'
-    box.style.minHeight = '38px'
+    box.style.position = 'absolute'
+    box.style.minHeight = '0'
+    box.style.right = '8px'
+    box.style.bottom = '6px'
 
     const input = document.createElement('input')
     input.type = 'text'
     input.placeholder = 'language'
     input.value = (current || '') + ''
-    input.style.width = '180px'
-    input.style.padding = '4px 6px'
+    input.style.width = '140px'
+    input.style.padding = '3px 6px'
     input.style.border = this.dark ? '1px solid #374151' : '1px solid #d1d5db'
     input.style.background = this.dark ? '#0b1220' : '#ffffff'
     input.style.color = this.dark ? '#d1d5db' : '#111827'
-    input.style.position = 'absolute'
-    input.style.right = '8px'
-    input.style.bottom = '6px'
+    input.style.position = 'relative'
 
     const list = document.createElement('div')
     list.style.display = 'block'
     list.style.position = 'fixed'
-    list.style.width = '220px'
-    list.style.maxHeight = '180px'
+    list.style.width = '180px'
+    list.style.maxHeight = '160px'
     list.style.overflowY = 'auto'
     list.style.border = this.dark ? '1px solid #374151' : '1px solid #d1d5db'
     list.style.background = this.dark ? '#0b1220' : '#ffffff'
-    list.style.borderRadius = '8px'
-    list.style.boxShadow = '0 6px 16px rgba(0,0,0,.15)'
-    list.style.padding = '6px'
+    list.style.borderRadius = '6px'
+    list.style.boxShadow = this.dark ? '0 6px 16px rgba(0,0,0,.35)' : '0 6px 16px rgba(0,0,0,.15)'
+    list.style.padding = '4px'
     ;(list.style as any).zIndex = '2000'
 
     const positionList = () => {
       const rect = input.getBoundingClientRect()
-      list.style.left = `${Math.max(8, rect.right - 220)}px`
+      list.style.left = `${Math.max(8, rect.right - 180)}px`
       list.style.top = `${rect.bottom + 6}px`
     }
 
@@ -332,10 +285,10 @@ export class CodeBlockView {
         const row = document.createElement('div')
         row.style.display = 'flex'
         row.style.alignItems = 'center'
-        row.style.padding = '6px 8px'
-        row.style.borderRadius = '6px'
+        row.style.padding = '4px 6px'
+        row.style.borderRadius = '4px'
         row.style.cursor = 'pointer'
-        row.style.color = this.dark ? '#d1d5db' : '#111827'
+        row.style.color = this.dark ? '#e5e7eb' : '#111827'
         row.addEventListener('click', (e) => { e.preventDefault(); this.applyLanguage(it.name) })
         row.addEventListener('mouseover', () => { row.style.background = this.dark ? '#1f2937' : '#f3f4f6' })
         row.addEventListener('mouseout', () => { row.style.background = 'transparent' })
@@ -343,7 +296,7 @@ export class CodeBlockView {
         const icon = document.createElement('span')
         icon.textContent = it.name.startsWith('j') ? '🟨' : it.name.startsWith('c') ? '🟦' : it.name.startsWith('p') ? '🟪' : '🟩'
         icon.style.marginRight = '8px'
-        icon.style.fontSize = '14px'
+        icon.style.fontSize = '12px'
 
         const label = document.createElement('span')
         label.textContent = it.name

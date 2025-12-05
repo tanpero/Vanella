@@ -8,6 +8,8 @@ import { history, defaultKeymap } from '@codemirror/commands'
 import { bracketMatching, syntaxHighlighting, defaultHighlightStyle, StreamLanguage } from '@codemirror/language'
 import { closeBrackets } from '@codemirror/autocomplete'
 import { stex } from '@codemirror/legacy-modes/mode/stex'
+import { useEditorStore } from '@/stores/editorStore'
+import { mapTheme } from '@/modes/shared/codemirrorConfig'
 
 export class MathBlockView {
   node: PMNode
@@ -20,6 +22,7 @@ export class MathBlockView {
   input: HTMLInputElement
   updating = false
   radiosEl: HTMLDivElement | null = null
+  rowEl: HTMLDivElement | null = null
 
   constructor(node: PMNode, view: PMEditorView, getPos: () => number) {
     this.node = node
@@ -30,8 +33,35 @@ export class MathBlockView {
     wrapper.className = 'pm-math-block'
     wrapper.style.display = 'block'
 
+    const row = document.createElement('div')
+    row.style.display = 'flex'
+    row.style.alignItems = 'stretch'
+    const gutter = document.createElement('div')
+    gutter.className = 'pm-code-gutter'
+    gutter.style.width = '36px'
+    gutter.style.flex = '0 0 36px'
+    const isDark = useEditorStore.getState().config.theme === 'dark'
+    gutter.style.background = isDark ? '#0b1220' : '#f3f4f6'
+    gutter.style.color = isDark ? '#9ca3af' : '#9ca3af'
+    gutter.style.padding = '6px 6px 6px 8px'
+    gutter.style.boxSizing = 'border-box'
+    gutter.style.textAlign = 'right'
+    gutter.style.fontFamily = 'Consolas, Monaco, monospace'
+    gutter.style.fontSize = '12px'
+    gutter.style.lineHeight = '1.6'
+    gutter.style.userSelect = 'none'
+    gutter.style.pointerEvents = 'none'
+    gutter.setAttribute('aria-hidden', 'true')
+    ;(gutter as any).contentEditable = 'false'
+
     const host = document.createElement('div')
+    host.style.flex = '1 1 auto'
+    host.style.minWidth = '0'
     host.style.width = '100%'
+    const { config } = useEditorStore.getState()
+    const chosenTheme = isDark ? config.codeblockThemeDark : config.codeblockThemeLight
+    const themeExt = mapTheme(chosenTheme, isDark)
+
     const cmState = CMState.create({
       doc: node.textContent || '',
       extensions: [
@@ -45,9 +75,10 @@ export class MathBlockView {
         syntaxHighlighting(defaultHighlightStyle),
         StreamLanguage.define(stex),
         CMView.theme({
-          '&': { fontFamily: 'Consolas, Monaco, monospace', fontSize: '14px' },
+          '&': { fontFamily: 'Consolas, Monaco, monospace', fontSize: '15px', transition: 'background-color .25s, color .25s, border-color .25s' },
           '.cm-content': { padding: '8px' }
-        })
+        }),
+        themeExt
       ]
     })
     const cm = new CMView({
@@ -65,10 +96,14 @@ export class MathBlockView {
           this.view.dispatch(trPM)
           this.updating = false
           this.renderPreview(text, this.node.attrs?.env)
+          this.renderLineNumbers(gutter, text)
         }
       }
     })
 
+    row.appendChild(gutter)
+    row.appendChild(host)
+    wrapper.appendChild(row)
     const preview = document.createElement('div')
     preview.className = 'pm-math-block-preview'
     preview.style.padding = '8px'
@@ -127,15 +162,23 @@ export class MathBlockView {
       setTimeout(() => { box.style.display = 'none'; this.hideEditorIfBlur() }, 150)
     })
 
-    wrapper.appendChild(host)
+    // host appended to row above
     wrapper.appendChild(preview)
     wrapper.appendChild(box)
     this.dom = wrapper
     this.cm = cm
     this.preview = preview
     this.box = box
-    // focus editor on create
-    setTimeout(() => { this.cm?.focus() }, 0)
+    this.rowEl = row
+    // initial display based on selection inside
+    const inside = this.isSelectionInside()
+    if (!inside) {
+      row.style.display = 'none'
+      preview.style.display = 'block'
+    }
+    // focus editor on create when inside
+    if (inside) setTimeout(() => { this.cm?.focus() }, 0)
+    this.renderLineNumbers(gutter, node.textContent || '')
     // detect env from pasted/raw content on init
     const initialText = cm.state.doc.toString()
     const det = this.detectOuterEnv(initialText)
@@ -172,6 +215,9 @@ export class MathBlockView {
       const selPos = Math.min((tr.doc ? tr.doc.content.size : nextDoc.content.size), end + 1)
       tr = tr.setSelection(TextSelection.create(tr.doc || this.view.state.doc, end + 1))
       this.view.dispatch(tr)
+      // show editor when selection moves into this node
+      if (this.rowEl) this.rowEl.style.display = 'flex'
+      this.cm?.focus()
     })
   }
 
@@ -184,7 +230,14 @@ export class MathBlockView {
       // update preview; also update radio when env attr changes
       this.setRadio(node.attrs?.env || '')
       this.renderPreview(text, node.attrs?.env)
+      const gutter = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
+      if (gutter) this.renderLineNumbers(gutter, text)
     }
+    // toggle editor visibility based on whether selection is inside
+    const inside = this.isSelectionInside()
+    const row = this.rowEl
+    if (row) row.style.display = inside ? 'flex' : 'none'
+    this.preview.style.display = 'block'
     return true
   }
 
@@ -220,20 +273,42 @@ export class MathBlockView {
     inputs.forEach(i => { i.checked = (i.value === target) })
   }
 
+  private renderLineNumbers(gutter: HTMLDivElement, text: string) {
+    const lines = text.split('\n').length
+    const frag = document.createDocumentFragment()
+    gutter.innerHTML = ''
+    for (let i = 1; i <= lines; i++) {
+      const span = document.createElement('div')
+      span.textContent = String(i)
+      frag.appendChild(span)
+    }
+    gutter.appendChild(frag)
+  }
+
   private hideEditorIfBlur() {
     const cm = this.cm
     if (!cm) return
     const hasFocus = cm.hasFocus
     if (!hasFocus) {
-      const host = cm.dom.parentElement as HTMLElement | null
-      if (host) host.style.display = 'none'
+      if (this.rowEl) this.rowEl.style.display = 'none'
       if (this.preview) this.preview.style.display = 'block'
       this.dom.addEventListener('click', () => {
-        const h = this.cm?.dom.parentElement as HTMLElement | null
-        if (h) h.style.display = 'block'
+        if (this.rowEl) this.rowEl.style.display = 'flex'
         if (this.preview) this.preview.style.display = 'block'
         this.cm?.focus()
       }, { once: true })
     }
+  }
+
+  private isSelectionInside(): boolean {
+    try {
+      const pos = this.getPos()
+      const from = pos + 1
+      const to = pos + this.node.nodeSize - 1
+      const sel = this.view.state.selection
+      const a = sel.from
+      const b = sel.to
+      return (a >= from && a <= to) || (b >= from && b <= to)
+    } catch { return false }
   }
 }

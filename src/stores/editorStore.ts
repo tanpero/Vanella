@@ -58,13 +58,15 @@ interface EditorStore {
 const defaultConfig: AppConfig = {
   theme: 'light',
   fontFamily: 'Consolas, Monaco, monospace',
-  fontSize: 14,
+  fontSize: 15,
   tabSize: 2,
   autoSave: true,
   autoSaveInterval: 5000,
   recentFiles: [],
   defaultExportPath: '',
-  imageCaptionBelowCentered: false
+  imageCaptionBelowCentered: false,
+  codeblockThemeLight: 'material-light',
+  codeblockThemeDark: 'monokai'
 }
 
 const defaultEditorState: EditorState = {
