@@ -18,7 +18,7 @@ export class TaskItemView implements NodeView {
     li.className = 'pm-task-item'
     const input = document.createElement('input')
     input.type = 'checkbox'
-    input.checked = !!(node.attrs as any).checked
+    input.checked = !!(node.attrs as { checked?: boolean | null }).checked
     input.addEventListener('change', () => {
       const pos = this.getPos()
       const tr = this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, checked: input.checked })
@@ -38,7 +38,7 @@ export class TaskItemView implements NodeView {
   update(node: PMNode) {
     if (node.type !== this.node.type) return false
     this.node = node
-    const checked = (node.attrs as any).checked
+    const checked = (node.attrs as { checked?: boolean | null }).checked
     this.checkbox.checked = !!checked
     return true
   }

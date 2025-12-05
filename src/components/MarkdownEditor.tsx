@@ -27,7 +27,6 @@ const MarkdownEditor = React.forwardRef<{
   
   const { 
     config, 
-    editorState, 
     setEditorState,
     markdownSource,
     setMarkdownSource 
@@ -50,6 +49,7 @@ const MarkdownEditor = React.forwardRef<{
   
   useEffect(() => {
     if (!editorRef.current) return
+    if (viewRef.current) return
     
     const extensions = [
       history(),
@@ -116,7 +116,7 @@ const MarkdownEditor = React.forwardRef<{
       view.destroy()
       viewRef.current = null
     }
-  }, [])
+  }, [isDarkTheme, config.fontSize, markdownSource, handleContentChange, handleSelectionChange])
   
   useEffect(() => {
     if (viewRef.current) {
@@ -164,7 +164,7 @@ const MarkdownEditor = React.forwardRef<{
       
       viewRef.current.setState(newState)
     }
-  }, [isDarkTheme, config.fontSize, config.fontFamily])
+  }, [isDarkTheme, config.fontSize, config.fontFamily, handleContentChange, handleSelectionChange])
   
   const insertSyntax = (syntax: string, placeholder?: string) => {
     if (!viewRef.current) return

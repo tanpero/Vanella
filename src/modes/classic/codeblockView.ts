@@ -59,7 +59,7 @@ export class CodeBlockView {
     gutter.style.userSelect = 'none'
     gutter.style.pointerEvents = 'none'
     gutter.setAttribute('aria-hidden', 'true')
-    ;(gutter as any).contentEditable = 'false'
+    gutter.setAttribute('contentEditable', 'false')
 
     const editorHost = document.createElement('div')
     editorHost.style.flex = '1 1 auto'
@@ -71,6 +71,8 @@ export class CodeBlockView {
     const themeExt = mapTheme(chosenTheme, dark)
     this.prevThemeKey = chosenTheme
 
+    const langExtCandidate = mapLanguage(node.attrs?.language)
+    const langExtArr: Extension[] = Array.isArray(langExtCandidate) ? langExtCandidate : [langExtCandidate]
     const extensions: Extension[] = [
       history(),
       keymap.of([...defaultKeymap, ...historyKeymap]),
@@ -83,7 +85,7 @@ export class CodeBlockView {
         '.cm-scroller, .cm-content, .cm-line': { fontFamily: 'Consolas, Monaco, monospace' },
         '.cm-content': { padding: '8px' }
       }),
-      ...([] as any[]).concat(mapLanguage(node.attrs?.language)),
+      ...langExtArr,
       themeExt
     ]
 
@@ -110,7 +112,7 @@ export class CodeBlockView {
     row.appendChild(gutter)
     row.appendChild(editorHost)
     wrapper.appendChild(row)
-    this.langBox = this.createLangSelector(node.attrs?.language, wrapper)
+    this.langBox = this.createLangSelector(node.attrs?.language)
     wrapper.appendChild(this.langBox)
     this.dom = wrapper
     this.cm = cm
@@ -180,7 +182,7 @@ export class CodeBlockView {
       this.dark = curDark
       const themeExt = mapTheme(themeKey, this.dark)
       this.prevThemeKey = themeKey
-      const nextExt = ([] as any[]).concat(baseExt, langExt, themeExt)
+      const nextExt = [...baseExt, ...(Array.isArray(langExt) ? langExt : [langExt]), themeExt]
       const state = CMState.create({ doc: this.cm.state.doc.toString(), extensions: nextExt })
       this.cm.setState(state)
       // update outer styles
@@ -218,7 +220,7 @@ export class CodeBlockView {
   }
 
   selectNode() {}
-  stopEvent(e: Event) { return true }
+  stopEvent() { return true }
   ignoreMutation() { return true }
   destroy() { this.cm.destroy() }
 
@@ -234,7 +236,7 @@ export class CodeBlockView {
     gutter.appendChild(frag)
   }
 
-  private createLangSelector(current?: string | null, container?: HTMLElement) {
+  private createLangSelector(current?: string | null) {
     const box = document.createElement('div')
     box.style.display = 'none'
     box.style.borderTop = 'none'
@@ -269,7 +271,7 @@ export class CodeBlockView {
     list.style.borderRadius = '6px'
     list.style.boxShadow = this.dark ? '0 6px 16px rgba(0,0,0,.35)' : '0 6px 16px rgba(0,0,0,.15)'
     list.style.padding = '4px'
-    ;(list.style as any).zIndex = '2000'
+    list.style.zIndex = '2000'
 
     const positionList = () => {
       const rect = input.getBoundingClientRect()

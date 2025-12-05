@@ -40,6 +40,8 @@
 
 .pm-editor img { max-width: 80%; height: auto; border-radius: 8px; display: block; margin: .6rem auto; }
 
+html, body { height: 100%; overflow: hidden; }
+
 .pm-shell {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -141,3 +143,5 @@
 .pm-editor.dark .pm-image-markers { background: #374151; }
 .pm-image-caption { text-align: center; font-size: .9em; color: #6b7280; margin-top: .3rem; }
 .pm-editor.dark .pm-image-caption { color: #9ca3af; }
+/* keep editor/container scrollable while page is locked */
+/* .pm-shell already has overflow:auto above */

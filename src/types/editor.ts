@@ -20,7 +20,7 @@ export interface FileState {
   originalContent: string
   isDirty: boolean
   isNewFile: boolean
-  fileHandle?: any
+  fileHandle?: FileSystemFileHandle
 }
 
 export interface EditorState {
@@ -52,6 +52,6 @@ export interface FileTreeNode {
   type: 'file' | 'directory'
   children?: FileTreeNode[]
   isExpanded?: boolean
-  handle?: any
-  parent?: any
+  handle?: FileSystemHandle
+  parent?: FileSystemDirectoryHandle
 }

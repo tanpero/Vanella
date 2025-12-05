@@ -16,7 +16,7 @@ export default function ContextMenu() {
       window.removeEventListener('keydown', onEsc)
       window.removeEventListener('mousedown', onClickOutside)
     }
-  }, [ctxVisible])
+  }, [ctxVisible, hideContextMenu])
 
   if (!ctxVisible) return null
 

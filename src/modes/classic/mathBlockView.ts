@@ -52,7 +52,7 @@ export class MathBlockView {
     gutter.style.userSelect = 'none'
     gutter.style.pointerEvents = 'none'
     gutter.setAttribute('aria-hidden', 'true')
-    ;(gutter as any).contentEditable = 'false'
+    gutter.setAttribute('contentEditable', 'false')
 
     const host = document.createElement('div')
     host.style.flex = '1 1 auto'
@@ -211,8 +211,6 @@ export class MathBlockView {
           tr = tr.insert(end, this.view.state.schema.nodes.paragraph.create())
         }
       }
-      const nextDoc = tr.doc || this.view.state.doc
-      const selPos = Math.min((tr.doc ? tr.doc.content.size : nextDoc.content.size), end + 1)
       tr = tr.setSelection(TextSelection.create(tr.doc || this.view.state.doc, end + 1))
       this.view.dispatch(tr)
       // show editor when selection moves into this node
@@ -257,10 +255,10 @@ export class MathBlockView {
       const svg = el.querySelector('svg') as SVGElement | null
       if (svg) {
         svg.style.display = 'inline-block'
-        ;(svg.style as any).margin = '0 auto'
+        svg.style.margin = '0 auto'
       } else {
         el.style.display = 'inline-block'
-        ;(el.style as any).margin = '0 auto'
+        el.style.margin = '0 auto'
       }
     } else {
       this.preview.style.textAlign = ''

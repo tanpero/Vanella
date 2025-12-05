@@ -20,6 +20,8 @@ import { TaskItemView } from './taskItemView'
 import { MermaidBlockView } from './mermaidBlockView'
 import { ImageView } from './imageView'
 import { buildMathInlineDecorations } from '@/modes/classic/mathInline'
+import { AbcBlockView } from './abcBlockView'
+import type { Node as PMNode, NodeType, MarkType } from 'prosemirror-model'
 
 function markerDecorations(state: EditorState): DecorationSet {
   const decos: Decoration[] = []
@@ -151,6 +153,7 @@ function markerDecorations(state: EditorState): DecorationSet {
 export default function ClassicEditor() {
   const mountRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
+  const ignoreNextDocUpdateRef = useRef<boolean>(false)
   const { activeFile, updateFileContent, config, markdownSource, setPmView, showContextMenu } = useEditorStore()
   const isDark = config.theme === 'dark'
   const captionCentered = !!config.imageCaptionBelowCentered
@@ -167,7 +170,7 @@ export default function ClassicEditor() {
         initialDoc = schema.node('doc', null, [schema.node('paragraph')])
       }
       const state = EditorState.create({
-        doc: initialDoc as any,
+        doc: initialDoc as PMNode,
         schema,
         plugins: [
           dropCursor(),
@@ -190,7 +193,8 @@ export default function ClassicEditor() {
                 const src = mImg[2] || ''
                 const fromAbs = baseStart + idx
                 const toAbs = fromAbs + full.length
-                const img = (schema.nodes as any).image.create({ src, alt })
+                const imageType = (schema.nodes as unknown as { image?: NodeType }).image
+                const img = imageType?.create({ src, alt })
                 const tr = newState.tr.replaceRangeWith(fromAbs, toAbs, img)
                 return tr
               }
@@ -246,13 +250,19 @@ export default function ClassicEditor() {
           keymap({
             Enter: (state, dispatch) => {
               const txt = state.selection.$from.parent.textContent || ''
-              const m = /^```([A-Za-z0-9+\-]*)$/.exec(txt)
+              const m = /^```([A-Za-z0-9+-]*)$/.exec(txt)
               if (m) {
                 const start = state.selection.$from.start()
                 const end = state.selection.$from.end()
                 const lang = (m[1] || '').trim()
-                if (lang.toLowerCase() === 'mermaid' && (schema.nodes as any).mermaid_block) {
-                  let tr = state.tr.replaceRangeWith(start, end, (schema.nodes as any).mermaid_block.create())
+                const mermaidType = (schema.nodes as unknown as { mermaid_block?: NodeType }).mermaid_block
+                const abcType = (schema.nodes as unknown as { abc_block?: NodeType }).abc_block
+                if (lang.toLowerCase() === 'mermaid' && mermaidType) {
+                  let tr = state.tr.replaceRangeWith(start, end, mermaidType.create())
+                  tr = tr.setSelection(TextSelection.create(tr.doc, start + 1))
+                  if (dispatch) dispatch(tr)
+                } else if (lang.toLowerCase() === 'abc' && abcType) {
+                  let tr = state.tr.replaceRangeWith(start, end, abcType.create())
                   tr = tr.setSelection(TextSelection.create(tr.doc, start + 1))
                   if (dispatch) dispatch(tr)
                 } else {
@@ -300,8 +310,16 @@ export default function ClassicEditor() {
                 if (dispatch) dispatch(tr)
                 return true
               }
-              const mermaidType = (schema.nodes as any).mermaid_block
+              const mermaidType = (schema.nodes as unknown as { mermaid_block?: NodeType }).mermaid_block
               if ($from.parent.type === mermaidType && $from.parent.textContent.length === 0) {
+                const start = $from.start()
+                const end = $from.end()
+                const tr = state.tr.setBlockType(start, end, schema.nodes.paragraph)
+                if (dispatch) dispatch(tr)
+                return true
+              }
+              const abcType = (schema.nodes as unknown as { abc_block?: NodeType }).abc_block
+              if ($from.parent.type === abcType && $from.parent.textContent.length === 0) {
                 const start = $from.start()
                 const end = $from.end()
                 const tr = state.tr.setBlockType(start, end, schema.nodes.paragraph)
@@ -318,9 +336,7 @@ export default function ClassicEditor() {
               const parent = $pos.parent
               if (!parent || !parent.isTextblock) return null
               const baseStart = $pos.start()
-              const text = parent.textContent || ''
-              // reuse inline parser logic
-              const markerLenAt = (t: string) => (t.slice(0,2) === '**' ? 2 : 1)
+              // scan selection's text node boundaries
               // simple scan for right-boundary reposition
               let accum = 0
               for (let i = 0; i < parent.childCount; i++) {
@@ -351,7 +367,7 @@ export default function ClassicEditor() {
               decorations: (s: EditorState) => {
                 const md = buildInlineDecorations(s)
                 const mx = buildMathInlineDecorations(s)
-                return DecorationSet.create(s.doc, ([] as any[]).concat(md, mx))
+                return DecorationSet.create(s.doc, md.concat(mx))
               }
             }
           }),
@@ -376,12 +392,13 @@ export default function ClassicEditor() {
               new InputRule(/^!\[(.*?)\]\((.+?)\)$/, (state, match, start, end) => {
                 const alt = match[1] || ''
                 const src = match[2] || ''
-                const img = (schema.nodes as any).image.create({ src, alt })
+                const imageNode = (schema.nodes as unknown as { image?: NodeType }).image
+                const img = imageNode?.create({ src, alt })
                 let tr = state.tr.replaceRangeWith(start, end, img)
                 tr = tr.setSelection(TextSelection.create(tr.doc, Math.max(1, start + 1)))
                 return tr
               }),
-              new InputRule(/^\-\s\[( |x|X)\]\s$/, (state, match, start, end) => {
+              new InputRule(/^-\s\[( |x|X)\]\s$/, (state, match, start, end) => {
                 const checked = (match[1] || ' ').toLowerCase() === 'x'
                 const liType = schema.nodes.list_item
                 const ulType = schema.nodes.bullet_list
@@ -392,7 +409,7 @@ export default function ClassicEditor() {
                 return tr
               }),
               new InputRule(/^---$/, (state, match, start, end) => {
-                let tr = state.tr.replaceRangeWith(start, end, schema.nodes.horizontal_rule.create())
+                const tr = state.tr.replaceRangeWith(start, end, schema.nodes.horizontal_rule.create())
                 return tr
               }),
               new InputRule(/^\$\$\s$/, (state, match, start, end) => {
@@ -423,7 +440,7 @@ export default function ClassicEditor() {
                   const strong = schema.marks.strong
                   const em = schema.marks.em
                   const code = schema.marks.code
-                  const handleRemove = (markType: any) => {
+                  const handleRemove = (markType: MarkType) => {
                     // remove mark around current text node
                     const $pos = view.state.doc.resolve(pos)
                     const parent = $pos.parent
@@ -456,7 +473,7 @@ export default function ClassicEditor() {
                     const el = target.closest('a[href]') as HTMLAnchorElement
                     const href = el.getAttribute('href') || ''
                     if (href) {
-                      if (event.ctrlKey || (event as any).detail === 2) {
+                      if (event.ctrlKey || event.detail === 2) {
                         event.preventDefault()
                         window.open(href, '_blank')
                         return true
@@ -552,19 +569,23 @@ export default function ClassicEditor() {
       const view = new EditorView(mountRef.current, {
         state,
         nodeViews: {
-          code_block: (node, view, getPos) => new CodeBlockView(node, view, getPos as any, isDark),
-          math_block: (node, view, getPos) => new MathBlockView(node, view, getPos as any),
-          mermaid_block: (node, view, getPos) => new MermaidBlockView(node, view, getPos as any),
-          list_item: (node, view, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, view, getPos as any) : undefined),
-          image: (node, view, getPos) => new ImageView(node, view, getPos as any, captionCentered)
+          code_block: (node, view, getPos) => new CodeBlockView(node, view, getPos as () => number, isDark),
+          math_block: (node, view, getPos) => new MathBlockView(node, view, getPos as () => number),
+          mermaid_block: (node, view, getPos) => new MermaidBlockView(node, view, getPos as () => number),
+          abc_block: (node, view, getPos) => new AbcBlockView(node, view, getPos as () => number),
+          list_item: (node, view, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, view, getPos as () => number) : undefined),
+          image: (node, view, getPos) => new ImageView(node, view, getPos as () => number, captionCentered)
         },
         dispatchTransaction: tr => {
           const newState = view.state.apply(tr)
           view.updateState(newState)
-          ;(async () => {
-            const md = await pmDocToMarkdown(newState.doc as any)
-            updateFileContent(md)
-          })()
+          if (tr.docChanged) {
+            ignoreNextDocUpdateRef.current = true
+            ;(async () => {
+              const md = await pmDocToMarkdown(newState.doc as PMNode)
+              updateFileContent(md)
+            })()
+          }
         }
       })
       viewRef.current = view
@@ -589,29 +610,33 @@ export default function ClassicEditor() {
     const plugins = view.state.plugins
     const mount = mountRef.current
     if (!mount) return
-    const newState = EditorState.create({ doc: currentDoc as any, schema, plugins })
+    const newState = EditorState.create({ doc: currentDoc as PMNode, schema, plugins })
     const newView = new EditorView(mount, {
       state: newState,
       nodeViews: {
-        code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as any, isDarkNow),
-        math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as any),
-        mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as any),
-        list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as any) : undefined),
-        image: (node, v, getPos) => new ImageView(node, v, getPos as any, captionCentered)
+        code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as () => number, isDarkNow),
+        math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as () => number),
+        mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as () => number),
+        abc_block: (node, v, getPos) => new AbcBlockView(node, v, getPos as () => number),
+        list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as () => number) : undefined),
+        image: (node, v, getPos) => new ImageView(node, v, getPos as () => number, captionCentered)
       },
       dispatchTransaction: tr => {
         const ns = newView.state.apply(tr)
         newView.updateState(ns)
-        ;(async () => {
-          const md = await pmDocToMarkdown(ns.doc as any)
-          updateFileContent(md)
-        })()
+        if (tr.docChanged) {
+          ignoreNextDocUpdateRef.current = true
+          ;(async () => {
+            const md = await pmDocToMarkdown(ns.doc as PMNode)
+            updateFileContent(md)
+          })()
+        }
       }
     })
     view.destroy()
     viewRef.current = newView
     setPmView(newView)
-  }, [config.theme])
+  }, [config.theme, captionCentered, setPmView, updateFileContent])
 
   useEffect(() => {
     const view = viewRef.current
@@ -621,41 +646,46 @@ export default function ClassicEditor() {
     const plugins = view.state.plugins
     const mount = mountRef.current
     if (!mount) return
-    const newState = EditorState.create({ doc: currentDoc as any, schema, plugins })
+    const newState = EditorState.create({ doc: currentDoc as PMNode, schema, plugins })
     const newView = new EditorView(mount, {
       state: newState,
       nodeViews: {
-        code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as any, isDarkNow),
-        math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as any),
-        mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as any),
-        list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as any) : undefined),
-        image: (node, v, getPos) => new ImageView(node, v, getPos as any, captionCentered)
+        code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as () => number, isDarkNow),
+        math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as () => number),
+        mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as () => number),
+        abc_block: (node, v, getPos) => new AbcBlockView(node, v, getPos as () => number),
+        list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as () => number) : undefined),
+        image: (node, v, getPos) => new ImageView(node, v, getPos as () => number, captionCentered)
       },
       dispatchTransaction: tr => {
         const ns = newView.state.apply(tr)
         newView.updateState(ns)
-        ;(async () => {
-          const md = await pmDocToMarkdown(ns.doc as any)
-          updateFileContent(md)
-        })()
+        if (tr.docChanged) {
+          ignoreNextDocUpdateRef.current = true
+          ;(async () => {
+            const md = await pmDocToMarkdown(ns.doc as PMNode)
+            updateFileContent(md)
+          })()
+        }
       }
     })
     view.destroy()
     viewRef.current = newView
     setPmView(newView)
-  }, [config.codeblockThemeLight, config.codeblockThemeDark])
+  }, [config.codeblockThemeLight, config.codeblockThemeDark, config.theme, captionCentered, setPmView, updateFileContent])
 
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
     ;(async () => {
       try {
+        if (ignoreNextDocUpdateRef.current) { ignoreNextDocUpdateRef.current = false; return }
         const doc = await markdownToPmDoc(schema, markdownSource || activeFile?.content || '')
-        const newState = EditorState.create({ doc: doc as any, schema, plugins: view.state.plugins })
+        const newState = EditorState.create({ doc: doc as PMNode, schema, plugins: view.state.plugins })
         view.updateState(newState)
-      } catch {}
+      } catch (e) { console.warn(e) }
     })()
-  }, [activeFile?.id])
+  }, [activeFile?.id, activeFile?.content, markdownSource])
 
   return (
     <div

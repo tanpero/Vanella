@@ -17,6 +17,7 @@ export class MermaidBlockView {
   cm: CMView | null = null
   preview: HTMLDivElement
   rowEl: HTMLDivElement | null = null
+  containerEl: HTMLDivElement | null = null
   updating = false
 
   constructor(node: PMNode, view: PMEditorView, getPos: () => number) {
@@ -48,7 +49,7 @@ export class MermaidBlockView {
     gutter.style.userSelect = 'none'
     gutter.style.pointerEvents = 'none'
     gutter.setAttribute('aria-hidden', 'true')
-    ;(gutter as any).contentEditable = 'false'
+    gutter.setAttribute('contentEditable', 'false')
 
     const host = document.createElement('div')
     host.style.flex = '1 1 auto'
@@ -114,39 +115,50 @@ export class MermaidBlockView {
     this.preview = preview
     this.rowEl = row
 
-    // initial visibility
-    const inside = this.isSelectionInside()
-    if (!inside) {
-      row.style.display = 'none'
-      preview.style.display = 'block'
-    } else {
-      setTimeout(() => { this.cm?.focus() }, 0)
-    }
+    // initial visibility: show preview if has content, editor starts focused
+    row.style.display = 'flex'
+    const initialSrc = cm.state.doc.toString().trim()
+    preview.style.display = initialSrc.length ? 'block' : 'none'
+    setTimeout(() => { this.cm?.focus() }, 0)
 
     // initialize mermaid theme
     mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' })
+    const container = document.createElement('div')
+    container.style.display = 'inline-block'
+    container.style.margin = '0 auto'
+    preview.appendChild(container)
+    this.containerEl = container
+
     this.renderDiagram(cm.state.doc.toString())
     this.renderLineNumbers(gutter, node.textContent || '')
 
+    // cleanup stray containers left by previous renders
+    Array.from(document.querySelectorAll('div[id^="dmermaid-"]'))
+      .forEach(el => { if (el.parentElement === document.body) el.remove() })
+
     host.addEventListener('focusin', () => {
       if (this.rowEl) this.rowEl.style.display = 'flex'
+      const cur = this.cm?.state.doc.toString().trim() || ''
+      this.preview.style.display = cur.length ? 'block' : 'none'
     })
     host.addEventListener('focusout', () => {
       setTimeout(() => {
         const focused = !!this.cm?.hasFocus
         if (!focused) {
-          if (this.rowEl) this.rowEl.style.display = 'none'
-          this.preview.style.display = 'block'
+          const cur = this.cm?.state.doc.toString().trim() || ''
+          if (this.rowEl) this.rowEl.style.display = cur.length ? 'none' : 'flex'
+          this.preview.style.display = cur.length ? 'block' : 'none'
         }
       }, 120)
     })
-
     preview.addEventListener('click', () => {
       const pos = this.getPos()
       const end = pos + this.node.nodeSize
       const tr = this.view.state.tr.setSelection(TextSelection.create(this.view.state.doc, end - 1))
       this.view.dispatch(tr)
       if (this.rowEl) this.rowEl.style.display = 'flex'
+      const cur = this.cm?.state.doc.toString().trim() || ''
+      this.preview.style.display = cur.length ? 'block' : 'none'
       this.cm?.focus()
     })
   }
@@ -161,11 +173,12 @@ export class MermaidBlockView {
       const gutter = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
       if (gutter) this.renderLineNumbers(gutter, text)
     }
-    // toggle visibility
+    // toggle editor visibility by selection; keep editor visible when empty
+    const hasSrc = (text.trim().length > 0)
     const inside = this.isSelectionInside()
     const row = this.rowEl
-    if (row) row.style.display = inside ? 'flex' : 'none'
-    this.preview.style.display = 'block'
+    if (row) row.style.display = (!hasSrc || inside) ? 'flex' : 'none'
+    this.preview.style.display = hasSrc ? 'block' : 'none'
     // update mermaid theme on dark change
     const isDark = useEditorStore.getState().config.theme === 'dark'
     mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' })
@@ -192,14 +205,50 @@ export class MermaidBlockView {
   private async renderDiagram(code: string) {
     try {
       const id = 'mermaid-' + Math.random().toString(36).slice(2)
-      const { svg } = await mermaid.render(id, code)
-      this.preview.innerHTML = svg
-      const el = this.preview.querySelector('svg') as SVGElement | null
-      if (el) {
-        el.style.display = 'inline-block'
-        ;(el.style as any).margin = '0 auto'
+      const isDark = useEditorStore.getState().config.theme === 'dark'
+      mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' })
+      const src = (code || '').trim()
+      if (!src.length) {
+        if (this.containerEl) this.containerEl.innerHTML = ''
+        this.preview.style.display = 'none'
+        return
       }
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      await mermaid.parse(src)
+      if (!this.containerEl || !this.containerEl.isConnected) {
+        const c = document.createElement('div')
+        c.style.display = 'inline-block'
+        c.style.margin = '0 auto'
+        this.preview.appendChild(c)
+        this.containerEl = c
+      }
+      this.containerEl.innerHTML = ''
+      const { svg } = await mermaid.render(id, src)
+      this.containerEl.innerHTML = svg
+      this.preview.style.display = 'block'
+      const temp = document.getElementById('d' + id)
+      if (temp && temp.parentElement === document.body) temp.remove()
     } catch (e) {
+      try {
+        const id = 'mermaid-' + Math.random().toString(36).slice(2)
+        const isDark = useEditorStore.getState().config.theme === 'dark'
+        mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' })
+        const src = (code || '').trim()
+        await mermaid.parse(src)
+        const { svg } = await mermaid.render(id, src)
+        if (!this.containerEl || !this.containerEl.isConnected) {
+          const c = document.createElement('div')
+          c.style.display = 'inline-block'
+          c.style.margin = '0 auto'
+          this.preview.appendChild(c)
+          this.containerEl = c
+        }
+        this.containerEl.innerHTML = svg
+        this.preview.style.display = 'block'
+        const temp = document.getElementById('d' + id)
+        if (temp && temp.parentElement === document.body) temp.remove()
+        return
+      } catch (err) { console.warn(err) }
       const isDark = useEditorStore.getState().config.theme === 'dark'
       const box = document.createElement('div')
       box.style.border = isDark ? '1px solid #374151' : '1px solid #f59e0b'
@@ -214,7 +263,7 @@ export class MermaidBlockView {
       title.textContent = '⚠️ Mermaid 解析错误'
       title.style.fontWeight = '600'
       title.style.marginBottom = '6px'
-      const msg = String((e as any)?.message || e || 'Mermaid render error')
+      const msg = String((e as { message?: string })?.message || e || 'Mermaid render error')
       const lineMatch = /line\s+(\d+)/i.exec(msg)
       const detail = document.createElement('pre')
       detail.textContent = msg
@@ -228,12 +277,18 @@ export class MermaidBlockView {
       hint.textContent = lineMatch ? `位置：第 ${lineMatch[1]} 行` : '点击以编辑修复'
       hint.style.marginTop = '6px'
       hint.style.opacity = '0.8'
-      box.innerHTML = ''
+      if (!this.containerEl || !this.containerEl.isConnected) {
+        const c = document.createElement('div')
+        c.style.display = 'inline-block'
+        c.style.margin = '0 auto'
+        this.preview.appendChild(c)
+        this.containerEl = c
+      }
+      this.containerEl.innerHTML = ''
       box.appendChild(title)
       box.appendChild(detail)
       box.appendChild(hint)
-      this.preview.innerHTML = ''
-      this.preview.appendChild(box)
+      this.containerEl.appendChild(box)
     }
   }
 

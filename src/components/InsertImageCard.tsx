@@ -17,12 +17,12 @@ export default function InsertImageCard() {
 
   const pickFile = async () => {
     try {
-      // @ts-ignore
-      const [fh] = await (window as any).showOpenFilePicker({ types: [{ description: 'Images', accept: { 'image/*': ['.png','.jpg','.jpeg','.gif','.svg'] } }] })
+      if (!window.showOpenFilePicker) return
+      const [fh] = await window.showOpenFilePicker({ types: [{ description: 'Images', accept: { 'image/*': ['.png','.jpg','.jpeg','.gif','.svg'] } }] })
       const file = await fh.getFile()
       const url = URL.createObjectURL(file)
       setSrc(url)
-    } catch {}
+    } catch (e) { console.warn(e) }
   }
 
   const onConfirm = () => {

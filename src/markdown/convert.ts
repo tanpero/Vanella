@@ -61,10 +61,29 @@ function splitInlineMathText(schema: Schema, value: string): PMNode[] {
   return out
 }
 
-export async function markdownToPmDoc(schema: Schema, markdown: string): Promise<PMNode> {
-  const md: any = await unified().use(remarkParse).use(remarkGfm).use(remarkBreaks).use(remarkMath).parse(markdown)
+type MdNode = {
+  type: string
+  children?: MdNode[]
+  value?: string
+  url?: string
+  title?: string | null
+  alt?: string | null
+  lang?: string
+  depth?: number
+  ordered?: boolean
+  start?: number
+  checked?: boolean
+}
 
-  function pmInline(children: any[]): PMNode[] {
+export async function markdownToPmDoc(schema: Schema, markdown: string): Promise<PMNode> {
+  const md = unified()
+              .use(remarkParse)
+              .use(remarkGfm)
+              .use(remarkBreaks)
+              .use(remarkMath)
+              .parse(markdown) as unknown as MdNode
+
+  function pmInline(children: MdNode[]): PMNode[] {
     const out: PMNode[] = []
     for (const child of children || []) {
       if (child.type === 'text') {
@@ -92,14 +111,15 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
         if (linkMark) {
           out.push(...inner.map(n => n.isText ? textWithMarks(schema, n.text || '', [linkMark, ...(n.marks || [])]) : n))
         } else {
-          const innerText = (child.children || []).map((c: any) => c.value || '').join('')
+          const innerText = (child.children || []).map((c) => (c.value || '')).join('')
           out.push(textWithMarks(schema, innerText || href))
         }
       } else if (child.type === 'image') {
         const src = child.url || ''
         const alt = child.alt || null
         const title = child.title || null
-        const img = (schema.nodes as any).image && (schema.nodes as any).image.create({ src, alt, title })
+        const imageType = (schema.nodes as unknown as { image?: import('prosemirror-model').NodeType }).image
+        const img = imageType && imageType.create({ src, alt, title })
         if (img) out.push(img)
         else out.push(textWithMarks(schema, alt || ''))
       }
@@ -107,28 +127,36 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
     return out
   }
 
-  function pmBlock(node: any): PMNode | null {
+  function pmBlock(node: MdNode): PMNode | null {
     switch (node.type) {
       case 'paragraph': {
-        const text = (node.children || []).map((c: any) => c.value || '').join('')
-        const bracket = /^\\\[[\s\S]*\\\]$/.exec(text)
+        const text = (node.children || []).map((c) => (c.value || '')).join('')
+        const bracket = /^\[\s*[\s\S]*\s*\]$/.exec(text)
         if (bracket) {
           const raw = text.slice(2, -2)
           return schema.nodes.math_block.create({}, schema.text(raw))
         }
         return schema.nodes.paragraph.create(null, pmInline(node.children || []))
       }
-      case 'heading':
+      case 'heading': {
         return schema.nodes.heading.create({ level: Math.min(Math.max(node.depth || 1, 1), 6) }, pmInline(node.children || []))
+      }
       case 'blockquote': {
         const innerBlocks = (node.children || []).map(pmBlock).filter(Boolean) as PMNode[]
         return schema.nodes.blockquote.create(null, innerBlocks)
       }
-      case 'code':
-        if ((node.lang || '').toLowerCase() === 'mermaid') {
-          return (schema.nodes as any).mermaid_block.create({}, schema.text(node.value || ''))
+      case 'code': {
+        const lang = (node.lang || '').toLowerCase()
+        if (lang === 'mermaid') {
+          const mermaidType = (schema.nodes as unknown as { mermaid_block?: import('prosemirror-model').NodeType }).mermaid_block
+          return mermaidType?.create({}, schema.text(node.value || '')) || null
+        }
+        if (lang === 'abc') {
+          const abcType = (schema.nodes as unknown as { abc_block?: import('prosemirror-model').NodeType }).abc_block
+          return abcType?.create({}, schema.text(node.value || '')) || null
         }
         return schema.nodes.code_block.create({ language: node.lang || '' }, schema.text(node.value || ''))
+      }
       case 'math': {
         const raw = node.value || ''
         const m = /^\s*\\begin\{([A-Za-z]+\*?)\}([\s\S]*?)\\end\{\1\}\s*$/.exec(raw)
@@ -142,9 +170,9 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
       case 'list': {
         const isOrdered = !!node.ordered
         const listNodeType = isOrdered ? schema.nodes.ordered_list : schema.nodes.bullet_list
-        const items = (node.children || []).map((li: any) => {
-          const liChildren = (li.children || []).map(pmBlock).filter(Boolean) as PMNode[]
-          const checked = (typeof li.checked === 'boolean') ? li.checked : null
+        const items = (node.children || []).map((l) => {
+          const liChildren = (l.children || []).map(pmBlock).filter(Boolean) as PMNode[]
+          const checked = (typeof l.checked === 'boolean') ? l.checked : null
           return schema.nodes.list_item.create({ checked }, liChildren.length ? liChildren : [schema.nodes.paragraph.create(null, [])])
         })
         return listNodeType.create(isOrdered ? { order: node.start || 1 } : null, items)
@@ -162,12 +190,12 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
 }
 
 export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
-  function mdInlineFromPM(node: PMNode): any[] {
-    const out: any[] = []
+  function mdInlineFromPM(node: PMNode): MdNode[] {
+    const out: MdNode[] = []
     for (let i = 0; i < node.childCount; i++) {
       const ch = node.child(i)
       if (ch.isText) {
-        let leaf: any = { type: 'text', value: ch.text || '' }
+        let leaf: MdNode = { type: 'text', value: ch.text || '' }
         const marks = ch.marks || []
         const hasLink = marks.find(m => m.type.name === 'link')
         for (const m of marks) {
@@ -186,29 +214,30 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
     return out
   }
 
-  function mdBlockFromPM(node: PMNode): any | null {
+  function mdBlockFromPM(node: PMNode): MdNode | null {
     const name = node.type.name
     if (name === 'paragraph') return { type: 'paragraph', children: mdInlineFromPM(node) }
     if (name === 'heading') return { type: 'heading', depth: node.attrs.level || 1, children: mdInlineFromPM(node) }
     if (name === 'blockquote') {
-      const children = [] as any[]
+      const children: MdNode[] = []
       node.forEach(child => { const m = mdBlockFromPM(child); if (m) children.push(m) })
       return { type: 'blockquote', children }
     }
     if (name === 'code_block') return { type: 'code', lang: node.attrs.language || '', value: node.textContent || '' }
     if (name === 'mermaid_block') return { type: 'code', lang: 'mermaid', value: node.textContent || '' }
+    if (name === 'abc_block') return { type: 'code', lang: 'abc', value: node.textContent || '' }
     if (name === 'ordered_list' || name === 'bullet_list') {
       const ordered = name === 'ordered_list'
       const start = ordered ? (node.attrs.order || 1) : undefined
-      const children = [] as any[]
+      const children: MdNode[] = []
       node.forEach(li => {
-        const liChildren = [] as any[]
+        const liChildren: MdNode[] = []
         li.forEach(c => { const m = mdBlockFromPM(c); if (m) liChildren.push(m) })
-        const liNode: any = { type: 'listItem', children: liChildren.length ? liChildren : [{ type: 'paragraph', children: [] }] }
-        if (li.attrs && li.attrs.checked !== null && typeof li.attrs.checked === 'boolean') liNode.checked = !!li.attrs.checked
+        const liNode: MdNode = { type: 'listItem', children: liChildren.length ? liChildren : [{ type: 'paragraph', children: [] }] }
+        if (li.attrs && li.attrs.checked !== null && typeof li.attrs.checked === 'boolean') (liNode as { checked?: boolean }).checked = !!li.attrs.checked
         children.push(liNode)
       })
-      const mdList: any = { type: 'list', ordered, children }
+      const mdList: MdNode = { type: 'list', ordered, children }
       if (start && start !== 1) mdList.start = start
       return mdList
     }
@@ -223,9 +252,14 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
     return null
   }
 
-  const mdChildren: any[] = []
+  const mdChildren: MdNode[] = []
   doc.forEach(child => { const m = mdBlockFromPM(child); if (m) mdChildren.push(m) })
-  const root = { type: 'root', children: mdChildren } as any
-  const file = await unified().use(remarkStringify, { fences: true, listItemIndent: 'one' }).use(remarkGfm).use(remarkBreaks).use(remarkMath).stringify(root)
+  const root: { type: 'root'; children?: MdNode[] } = { type: 'root', children: mdChildren }
+  const file = await unified()
+                    .use(remarkStringify, { fences: true, listItemIndent: 'one' })
+                    .use(remarkGfm)
+                    .use(remarkBreaks)
+                    .use(remarkMath)
+                    .stringify(root as never)
   return String(file)
 }

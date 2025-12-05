@@ -5,17 +5,16 @@ import { createHash } from 'node:crypto'
 
 type NativeModule = { hash_sha256: (input: string) => string }
 
-function loadNative(): NativeModule | null {
+let native: NativeModule | null = null
+async function loadNative(): Promise<void> {
   try {
     const modPath = path.join(__dirname, '..', 'native', 'rust-addon', 'index.node')
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require(modPath) as NativeModule
+    const mod = await import(modPath)
+    native = (mod as unknown) as NativeModule
   } catch {
-    return null
+    native = null
   }
 }
-
-const native = loadNative()
 
 function hashSha256(input: string): string {
   if (native) return native.hash_sha256(input)
@@ -44,6 +43,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  void loadNative()
   ipcMain.handle('hash-sha256', async (_evt, text: string) => hashSha256(text))
   createWindow()
 

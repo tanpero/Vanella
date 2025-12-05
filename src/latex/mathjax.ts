@@ -23,10 +23,11 @@ export function renderInline(raw: string): HTMLElement {
     const node = html.convert(raw, { display: false }) as unknown as HTMLElement
     cacheInline.set(key, node.cloneNode(true) as HTMLElement)
     return node
-  } catch (e: any) {
+  } catch (e) {
+    const msg = (e as { message?: string }).message
     const span = document.createElement('span')
     span.className = 'pm-math-error'
-    span.textContent = `MathJax: ${e?.message || 'render error'}`
+    span.textContent = `MathJax: ${msg || 'render error'}`
     return span
   }
 }
@@ -39,10 +40,11 @@ export function renderBlock(raw: string): HTMLElement {
     const node = html.convert(raw, { display: true }) as unknown as HTMLElement
     cacheBlock.set(key, node.cloneNode(true) as HTMLElement)
     return node
-  } catch (e: any) {
+  } catch (e) {
+    const msg = (e as { message?: string }).message
     const div = document.createElement('div')
     div.className = 'pm-math-error'
-    div.textContent = `MathJax: ${e?.message || 'render error'}`
+    div.textContent = `MathJax: ${msg || 'render error'}`
     return div
   }
 }

@@ -19,8 +19,6 @@ import {
   FileCode
 } from 'lucide-react'
 import { useEditorStore } from '@/stores/editorStore'
-import { generateId } from '@/utils/markdown'
-import { FileState } from '@/types/editor'
 
 interface ToolbarProps {
   className?: string
@@ -45,7 +43,7 @@ export default function Toolbar({
   
   const isDarkTheme = config.theme === 'dark'
   
-  const run = (cmd: string, payload?: any) => {
+  const run = (cmd: string, payload?: { level?: number; href?: string; src?: string; alt?: string; language?: string }) => {
     if (editorMode === 'classic') runClassicCommand(cmd, payload)
     else onInsertSyntax?.(cmd)
   }

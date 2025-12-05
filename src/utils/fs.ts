@@ -1,9 +1,11 @@
-export async function buildFileTree(dirHandle: any, basePath = ''): Promise<any[]> {
-  const nodes: any[] = []
-  for await (const [name, handle] of (dirHandle as any).entries()) {
+import type { FileTreeNode } from '@/types/editor'
+
+export async function buildFileTree(dirHandle: FileSystemDirectoryHandle, basePath = ''): Promise<FileTreeNode[]> {
+  const nodes: FileTreeNode[] = []
+  for await (const [name, handle] of dirHandle.entries()) {
     const path = `${basePath}/${name}`
     if (handle.kind === 'directory') {
-      const children = await buildFileTree(handle, path)
+      const children = await buildFileTree(handle as FileSystemDirectoryHandle, path)
       nodes.push({ name, path, type: 'directory', children, isExpanded: false, handle })
     } else {
       nodes.push({ name, path, type: 'file', handle, parent: dirHandle })
@@ -13,28 +15,28 @@ export async function buildFileTree(dirHandle: any, basePath = ''): Promise<any[
   return nodes
 }
 
-export async function readFileHandle(handle: any): Promise<string> {
+export async function readFileHandle(handle: FileSystemFileHandle): Promise<string> {
   const file = await handle.getFile()
   return await file.text()
 }
 
-export async function writeFileHandle(handle: any, content: string) {
+export async function writeFileHandle(handle: FileSystemFileHandle, content: string): Promise<void> {
   const writable = await handle.createWritable()
   await writable.write(content)
   await writable.close()
 }
 
-export async function createFile(dirHandle: any, name: string, content = ''): Promise<any> {
+export async function createFile(dirHandle: FileSystemDirectoryHandle, name: string, content = ''): Promise<FileSystemFileHandle> {
   const fileHandle = await dirHandle.getFileHandle(name, { create: true })
   await writeFileHandle(fileHandle, content)
   return fileHandle
 }
 
-export async function deleteEntry(dirHandle: any, name: string, recursive = false) {
+export async function deleteEntry(dirHandle: FileSystemDirectoryHandle, name: string, recursive = false): Promise<void> {
   await dirHandle.removeEntry(name, { recursive })
 }
 
-export async function renameFile(dirHandle: any, oldName: string, newName: string) {
+export async function renameFile(dirHandle: FileSystemDirectoryHandle, oldName: string, newName: string): Promise<FileSystemFileHandle> {
   const oldHandle = await dirHandle.getFileHandle(oldName)
   const content = await readFileHandle(oldHandle)
   const newHandle = await dirHandle.getFileHandle(newName, { create: true })

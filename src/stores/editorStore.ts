@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { AppConfig, FileState, EditorState, EditorTab, FileTreeNode } from '@/types/editor'
 import { generateId } from '@/utils/markdown'
+import type { EditorView } from 'prosemirror-view'
+import type { Transaction } from 'prosemirror-state'
 
 interface EditorStore {
   // App configuration
@@ -11,7 +13,7 @@ interface EditorStore {
   activeFile: FileState | null
   openTabs: EditorTab[]
   fileTree: FileTreeNode[]
-  rootDirHandle?: any
+  rootDirHandle?: FileSystemDirectoryHandle
   
   // Editor state
   editorState: EditorState
@@ -20,9 +22,9 @@ interface EditorStore {
   setEditorMode: (mode: 'classic' | 'source') => void
   markdownSource: string
   setMarkdownSource: (content: string) => void
-  pmView: any | null
-  setPmView: (view: any | null) => void
-  runClassicCommand: (cmd: string, payload?: any) => void
+  pmView: EditorView | null
+  setPmView: (view: EditorView | null) => void
+  runClassicCommand: (cmd: string, payload?: { level?: number; href?: string; src?: string; alt?: string; language?: string }) => void
   
   // File operations
   setActiveFile: (file: FileState | null) => void
@@ -53,6 +55,27 @@ interface EditorStore {
   ctxY?: number
   showContextMenu: (x: number, y: number) => void
   hideContextMenu: () => void
+
+  // Image insert card
+  imageCardVisible: boolean
+  imageCardX: number
+  imageCardY: number
+  showImageCard: (x: number, y: number) => void
+  hideImageCard: () => void
+  confirmInsertImage: (src: string, alt?: string) => void
+
+  // Preview toggle
+  previewVisible: boolean
+  togglePreview: () => void
+
+  // Editor ref and markdown helpers
+  editorRef: { insertSyntax: (syntax: string, placeholder?: string) => void } | null
+  setEditorRef: (ref: { insertSyntax: (syntax: string, placeholder?: string) => void } | null) => void
+  insertMarkdownSyntax: (syntax: string, placeholder?: string, suffix?: string) => void
+
+  // Basic file actions
+  newFile: () => void
+  saveFile: () => void
 }
 
 const defaultConfig: AppConfig = {
@@ -95,9 +118,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setEditorMode: (mode) => set({ editorMode: mode }),
   markdownSource: '',
   setMarkdownSource: (content) => set((state) => {
-    const next = {
+    const next: Partial<EditorStore> = {
       markdownSource: content
-    } as any
+    }
     if (state.activeFile) {
       next.activeFile = {
         ...state.activeFile,
@@ -119,10 +142,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     if (!pmView || editorMode !== 'classic') return
     const state = pmView.state
     const schema = state.schema
-    const dispatch = (tr: any) => pmView.dispatch(tr)
+    const dispatch = (tr: Transaction) => pmView.dispatch(tr)
     const sel = state.selection
     const from = sel.from, to = sel.to
-    const textblock = sel.$from.parent
     try {
       switch (cmd) {
         case 'bold':
@@ -181,7 +203,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         case 'image': {
           const src = payload?.src || ''
           const alt = payload?.alt || ''
-          const img = (schema.nodes as any).image?.create({ src, alt })
+          const imageNode = (schema.nodes as unknown as { image?: import('prosemirror-model').NodeType }).image
+          const img = imageNode?.create({ src, alt })
           if (img) dispatch(state.tr.replaceSelectionWith(img))
           break
         }
@@ -198,10 +221,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
           // placeholder only
           break
       }
-    } catch {}
+    } catch (e) { console.warn(e) }
   },
   
-  setActiveFile: (file) => set((state) => ({ activeFile: file, markdownSource: file?.content || '' })),
+  setActiveFile: (file) => set(() => ({ activeFile: file, markdownSource: file?.content || '' })),
   
   addTab: (tab) => set((state) => {
     const existingTab = state.openTabs.find(t => t.id === tab.id)
@@ -252,11 +275,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setFileTree: (tree) => set({ fileTree: tree }),
   pickDirectory: async () => {
     try {
-      // @ts-ignore
-      const dirHandle = await (window as any).showDirectoryPicker()
+      const dirHandle = await window.showDirectoryPicker?.()
       const { buildFileTreeWorker } = await import('@/utils/fsWorkerClient')
-      const root = await buildFileTreeWorker(dirHandle, '')
-      set({ rootDirHandle: dirHandle, fileTree: root })
+      if (dirHandle) {
+        const root = await buildFileTreeWorker(dirHandle, '')
+        set({ rootDirHandle: dirHandle, fileTree: root })
+      }
     } catch (e) { console.warn(e) }
   },
   refreshDirectory: async () => {
@@ -269,7 +293,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   openFileNode: async (node) => {
     if (node.type !== 'file' || !node.handle) return
     const { readFileWorker } = await import('@/utils/fsWorkerClient')
-    const content = await readFileWorker(node.handle)
+    const content = await readFileWorker(node.handle as FileSystemFileHandle)
     const file: FileState = {
       id: generateId(),
       path: node.path,
@@ -278,7 +302,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       originalContent: content,
       isDirty: false,
       isNewFile: false,
-      fileHandle: node.handle
+      fileHandle: node.handle as FileSystemFileHandle
     }
     set((state) => ({ activeFile: file, markdownSource: content, openTabs: [...state.openTabs, { id: file.id, name: file.name, path: file.path, isActive: true, isDirty: false }] }))
   },
@@ -298,16 +322,13 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     if (!dirHandle) return
     const name = prompt('新建文件夹名：') || ''
     if (!name) return
-    // create directory via getDirectoryHandle
-    // @ts-ignore
-    const newDir = await dirHandle.getDirectoryHandle(name, { create: true })
+    await dirHandle.getDirectoryHandle(name, { create: true })
     await get().refreshDirectory()
   },
   deleteNode: async (node) => {
     const dirHandle = node.type === 'file' ? findDirHandleByPath(get().fileTree, node.path.substring(0, node.path.lastIndexOf('/'))) : get().rootDirHandle
     const name = node.name
     if (!dirHandle) return
-    // @ts-ignore
     await dirHandle.removeEntry(name, { recursive: node.type === 'directory' })
     await get().refreshDirectory()
   },
@@ -352,7 +373,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setEditorRef: (ref: { insertSyntax: (syntax: string, placeholder?: string) => void } | null) => 
     set({ editorRef: ref }),
   
-  insertMarkdownSyntax: (syntax: string, placeholder?: string, suffix?: string) => {
+  insertMarkdownSyntax: (syntax: string, placeholder?: string) => {
     const { editorRef } = useEditorStore.getState()
     if (editorRef) {
       editorRef.insertSyntax(syntax, placeholder)
@@ -366,7 +387,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       name: `untitled-${Date.now()}.md`,
       content: '',
       originalContent: '',
-      isDirty: false
+      isDirty: false,
+      isNewFile: true
     }
     
     set((state) => ({
@@ -375,6 +397,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       openTabs: [...state.openTabs, {
         id: newFileState.id,
         name: newFileState.name,
+        path: newFileState.path,
         isActive: true,
         isDirty: false
       }]
@@ -402,10 +425,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }))
   }
 }))
-function findDirHandleByPath(tree: FileTreeNode[], path: string): any | null {
+function findDirHandleByPath(tree: FileTreeNode[], path: string): FileSystemDirectoryHandle | null {
   for (const n of tree) {
     if (n.type === 'directory') {
-      if (n.path === path) return n.handle
+      if (n.path === path) return n.handle as FileSystemDirectoryHandle
       if (n.children) {
         const r = findDirHandleByPath(n.children, path)
         if (r) return r

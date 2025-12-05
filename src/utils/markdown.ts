@@ -1,6 +1,5 @@
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
-import remarkStringify from 'remark-stringify'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import remarkRehype from 'remark-rehype'
@@ -19,8 +18,8 @@ export const parseMarkdown = (content: string): string => {
 }
 
 export const extractTextFromMarkdown = (content: string): string => {
-  const tree = unified().use(remarkParse).use(remarkGfm).use(remarkBreaks).parse(content)
-  return mdastToString(tree as any)
+  const tree = unified().use(remarkParse).use(remarkGfm).use(remarkBreaks).parse(content) as unknown as { type: string }
+  return mdastToString(tree as { type: string })
 }
 
 export const getWordCount = (content: string): number => {

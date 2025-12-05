@@ -61,7 +61,7 @@ import { atomone } from '@uiw/codemirror-theme-atomone'
 import { eclipse } from '@uiw/codemirror-theme-eclipse'
 import { gruvboxDark } from '@uiw/codemirror-theme-gruvbox-dark'
 
-export function mapLanguage(name: string | null | undefined): Extension | [] {
+export function mapLanguage(name: string | null | undefined): Extension | Extension[] {
   const lang = (name || '').trim().toLowerCase()
   switch (lang) {
     case 'js':
@@ -146,7 +146,7 @@ export function mapLanguage(name: string | null | undefined): Extension | [] {
       return StreamLanguage.define(octave)
     case 'mathematica':
     case 'wolfram':
-      return StreamLanguage.define(matematica)
+      return StreamLanguage.define(mathematica)
     case 'julia':
       return StreamLanguage.define(julia)
     case 'r':
@@ -171,12 +171,12 @@ export function mapLanguage(name: string | null | undefined): Extension | [] {
       return StreamLanguage.define(cobol)
     case 'asciidoc':
     case 'adoc':
-      return StreamLanguage.define(asciidoc)
+      return StreamLanguage.define(asciidoc as unknown as import('@codemirror/language').StreamParser<unknown>)
     case 'coffeescript':
     case 'coffee':
       return StreamLanguage.define(coffeeScript)
     default:
-      return []
+      return [] as Extension[]
   }
 }
 
@@ -257,4 +257,3 @@ export function mapTheme(name: string | undefined, darkMode: boolean): Extension
     default: return darkMode ? monokai : materialLight
   }
 }
-

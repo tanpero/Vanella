@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useEffect } from 'react'
 import Toolbar from '@/components/Toolbar'
 import Sidebar from '@/components/Sidebar'
 import EditorShell from '@/modes/EditorShell'
@@ -6,7 +6,7 @@ import StatusBar from '@/components/StatusBar'
 import SettingsPanel from '@/components/SettingsPanel'
 import { useEditorStore } from '@/stores/editorStore'
 import { FileState, EditorTab } from '@/types/editor'
-import { generateId, getWordCount } from '@/utils/markdown'
+import { generateId } from '@/utils/markdown'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { exportMarkdown, exportHTML } from '@/utils/export'
 
@@ -17,11 +17,9 @@ export default function Home() {
     config, 
     sidebarVisible, 
     settingsVisible, 
-    previewVisible,
     activeFile, 
     setActiveFile, 
     addTab, 
-    setEditorState,
     toggleSettings,
     togglePreview,
     setEditorRef 
@@ -36,7 +34,7 @@ export default function Home() {
   useEffect(() => {
     setEditorRef(editorRef.current)
     return () => setEditorRef(null)
-  }, [])
+  }, [setEditorRef])
   
   // Initialize with a welcome file
   useEffect(() => {
@@ -122,7 +120,7 @@ $$
       
       addTab(welcomeTab)
     }
-  }, [])
+  }, [activeFile, addTab, setActiveFile])
   
   const handleInsertSyntax = (syntax: string, placeholder?: string) => {
     editorRef.current?.insertSyntax(syntax, placeholder)
@@ -154,8 +152,8 @@ $$
   
   const handleOpenFile = async () => {
     try {
-      // @ts-ignore
-      const [fh] = await (window as any).showOpenFilePicker({ types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }] })
+      if (!window.showOpenFilePicker) return
+      const [fh] = await window.showOpenFilePicker({ types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }] })
       const { readFileWorker } = await import('@/utils/fsWorkerClient')
       const text = await readFileWorker(fh)
       const newFile: FileState = {
@@ -170,7 +168,7 @@ $$
       }
       setActiveFile(newFile)
       addTab({ id: newFile.id, name: newFile.name, path: newFile.path, isActive: true, isDirty: false })
-    } catch {}
+    } catch (e) { console.warn(e) }
   }
   
   const handleSaveFile = async () => {
@@ -180,11 +178,11 @@ $$
       if (activeFile.fileHandle) {
         await writeFileWorker(activeFile.fileHandle, activeFile.content)
       } else {
-        // @ts-ignore
-        const fh = await (window as any).showSaveFilePicker({ suggestedName: activeFile.name, types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }] })
+        if (!window.showSaveFilePicker) return
+        const fh = await window.showSaveFilePicker({ suggestedName: activeFile.name, types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }] })
         await writeFileWorker(fh, activeFile.content)
       }
-    } catch {}
+    } catch (e) { console.warn(e) }
   }
   
   const handleTogglePreview = () => {

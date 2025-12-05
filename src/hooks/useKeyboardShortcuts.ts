@@ -26,13 +26,13 @@ export const useKeyboardShortcuts = () => {
       if (isCmd && key === 'n') {
         event.preventDefault()
         newFile()
-      } else if (isCmd && key === 's') {
-        event.preventDefault()
-        saveFile()
       } else if (isCmd && shiftKey && key === 's') {
         event.preventDefault()
         // Save as functionality (placeholder)
         console.log('Save as...')
+      } else if (isCmd && key === 's') {
+        event.preventDefault()
+        saveFile()
       } else if (isCmd && shiftKey && key === 'm') {
         event.preventDefault()
         // Export markdown - this would need to be implemented in the component

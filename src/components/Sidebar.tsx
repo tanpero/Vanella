@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { useEditorStore } from '@/stores/editorStore'
 import { FileTreeNode } from '@/types/editor'
-import { generateId } from '@/utils/markdown'
 
 interface SidebarProps {
   className?: string
@@ -19,7 +18,7 @@ interface SidebarProps {
 interface FileTreeItemProps {
   node: FileTreeNode
   depth: number
-  onFileClick: (path: string, name: string) => void
+  onFileClick: (path: string) => void
   onFolderToggle: (path: string) => void
   isDarkTheme: boolean
 }
@@ -33,7 +32,7 @@ function FileTreeItem({ node, depth, onFileClick, onFolderToggle, isDarkTheme }:
       setIsExpanded(!isExpanded)
       onFolderToggle(node.path)
     } else {
-      onFileClick(node.path, node.name)
+      onFileClick(node.path)
     }
   }
   
@@ -120,14 +119,13 @@ function FileTreeItem({ node, depth, onFileClick, onFolderToggle, isDarkTheme }:
 
 export default function Sidebar({ className = '' }: SidebarProps) {
   const { fileTree, config, pickDirectory, refreshDirectory, openFileNode } = useEditorStore()
-  const [isExpanded, setIsExpanded] = useState(true)
   
   const isDarkTheme = config.theme === 'dark'
   
   // Mock file tree data - in a real app, this would come from the file system
   const mockFileTree: FileTreeNode[] = []
   
-  const handleFileClick = (path: string, name: string) => {
+  const handleFileClick = (path: string) => {
     const node = findNodeByPath(fileTree, path)
     if (node) openFileNode(node)
   }
