@@ -14,13 +14,12 @@ function splitInlineMathText(schema: Schema, value: string): PMNode[] {
   const out: PMNode[] = []
   let i = 0
   while (i < value.length) {
-    // \( ... \) inline math → normalize to $...$
     if (value[i] === '\\' && value[i + 1] === '(') {
       let j = i + 2
       while (j < value.length && !(value[j] === '\\' && value[j + 1] === ')')) j++
       if (j < value.length) {
         const raw = value.slice(i + 2, j)
-        out.push(schema.text(`$${raw}$`))
+        out.push(schema.text(`\\(${raw}\\)`))
         i = j + 2
         continue
       }
@@ -73,6 +72,7 @@ type MdNode = {
   ordered?: boolean
   start?: number
   checked?: boolean
+  align?: Array<'left'|'center'|'right' | null>
 }
 
 export async function markdownToPmDoc(schema: Schema, markdown: string): Promise<PMNode> {
@@ -90,7 +90,7 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
         const segs = splitInlineMathText(schema, child.value || '')
         out.push(...segs)
       } else if (child.type === 'inlineMath') {
-        const raw = `$${child.value || ''}$`
+        const raw = `\\(${child.value || ''}\\)`
         out.push(schema.text(raw))
       } else if (child.type === 'strong') {
         const mark = schema.marks.strong.create()
@@ -184,6 +184,28 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
       }
       case 'thematicBreak':
         return schema.nodes.horizontal_rule.create()
+      case 'table': {
+        const tableType = (schema.nodes as any).table
+        const rowType = (schema.nodes as any).table_row
+        const cellType = (schema.nodes as any).table_cell
+        const headerType = (schema.nodes as any).table_header
+        const aligns = ((node as unknown as { align?: Array<'left'|'center'|'right' | null> }).align || [])
+        const rows = (node.children || [])
+        const pmRows: PMNode[] = []
+        rows.forEach((r, idx) => {
+          if (r.type !== 'tableRow') return
+          const cells: PMNode[] = []
+          for (const c of (r.children || [])) {
+            if (c.type !== 'tableCell') continue
+            const para = schema.nodes.paragraph.create(null, pmInline(c.children || []))
+            const cell = (idx === 0 ? headerType : cellType).create(null, [para])
+            cells.push(cell)
+          }
+          pmRows.push(rowType.create(null, cells))
+        })
+        const colalign = aligns.map(a => (a || 'left')) as Array<'left'|'center'|'right'>
+        return tableType.create({ colalign }, pmRows)
+      }
       default:
         return null
     }
@@ -256,6 +278,64 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
     }
     if (name === 'toc_block') {
       return { type: 'paragraph', children: [{ type: 'text', value: '[TOC]' }] }
+    }
+    if (name === 'table') {
+      let hasSpan = false
+      node.forEach(row => {
+        row.forEach(cell => { if ((cell.attrs?.colspan || 1) > 1 || (cell.attrs?.rowspan || 1) > 1) hasSpan = true })
+      })
+      const aligns = (node.attrs?.colalign || []) as Array<'left'|'center'|'right'>
+      if (!hasSpan) {
+        const rows: MdNode[] = []
+        node.forEach(row => {
+          const cells: MdNode[] = []
+          row.forEach(cell => {
+            const para = cell.firstChild
+            const children = para ? mdInlineFromPM(para as PMNode) : []
+            cells.push({ type: 'tableCell', children })
+          })
+          rows.push({ type: 'tableRow', children: cells })
+        })
+        return { type: 'table', align: aligns, children: rows }
+      }
+      const escape = (s: string) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const stringifyInline = (children: MdNode[]): string => {
+        const run = (n: MdNode): string => {
+          if (n.type === 'text') return escape(n.value || '')
+          if (n.type === 'inlineCode') return `<code>${escape(n.value || '')}</code>`
+          if (n.type === 'strong') return `<strong>${(n.children || []).map(run).join('')}</strong>`
+          if (n.type === 'emphasis') return `<em>${(n.children || []).map(run).join('')}</em>`
+          if (n.type === 'link') return `<a href="${escape(n.url || '')}">${(n.children || []).map(run).join('')}</a>`
+          if (n.type === 'image') return `<img src="${escape(n.url || '')}" alt="${escape(n.alt || '')}" />`
+          if (n.children && n.children.length) return n.children.map(run).join('')
+          return ''
+        }
+        return children.map(run).join('')
+      }
+      let html = '<table class="md-table"><tbody>'
+      const alignStyle = (i: number) => {
+        const a = aligns[i] || 'left'
+        return a === 'left' ? 'text-align:left' : (a === 'center' ? 'text-align:center' : 'text-align:right')
+      }
+      let rowIndex = 0
+      node.forEach(row => {
+        html += '<tr>'
+        let cellIndex = 0
+        row.forEach(cell => {
+          const para = cell.firstChild
+          const children = para ? mdInlineFromPM(para as PMNode) : []
+          const tag = rowIndex === 0 ? 'th' : 'td'
+          const cs = cell.attrs?.colspan || 1
+          const rs = cell.attrs?.rowspan || 1
+          const style = alignStyle(cellIndex)
+          html += `<${tag} style="${style}"${cs > 1 ? ` colspan="${cs}"` : ''}${rs > 1 ? ` rowspan="${rs}"` : ''}>${stringifyInline(children)}</${tag}>`
+          cellIndex += cs
+        })
+        html += '</tr>'
+        rowIndex++
+      })
+      html += '</tbody></table>'
+      return { type: 'html', value: html }
     }
     return null
   }

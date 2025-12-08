@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, Palette, Type, Keyboard, Save } from 'lucide-react'
+import { X, Palette, Type, Keyboard, Save, Play } from 'lucide-react'
 import { useEditorStore } from '@/stores/editorStore'
 
 interface SettingsPanelProps {
@@ -18,7 +18,10 @@ export default function SettingsPanel({ className = '', onClose }: SettingsPanel
     autoSave: config.autoSave,
     autoSaveInterval: config.autoSaveInterval,
     codeblockThemeLight: config.codeblockThemeLight || 'material-light',
-    codeblockThemeDark: config.codeblockThemeDark || 'monokai'
+    codeblockThemeDark: config.codeblockThemeDark || 'monokai',
+    slidePagination: config.slidePagination || 'separators',
+    slideHeadingLevel: typeof config.slideHeadingLevel === 'number' ? config.slideHeadingLevel : 2,
+    revealNavigationMode: config.revealNavigationMode || 'default'
   })
   
   const isDarkTheme = config.theme === 'dark'
@@ -37,7 +40,10 @@ export default function SettingsPanel({ className = '', onClose }: SettingsPanel
       autoSave: true,
       autoSaveInterval: 5000,
       codeblockThemeLight: 'material-light',
-      codeblockThemeDark: 'monokai'
+      codeblockThemeDark: 'monokai',
+      slidePagination: 'separators',
+      slideHeadingLevel: 2,
+      revealNavigationMode: 'default'
     })
   }
   
@@ -411,6 +417,117 @@ export default function SettingsPanel({ className = '', onClose }: SettingsPanel
               />
             </div>
           )}
+        </div>
+        
+        {/* Slides Section */}
+        <div style={{ marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <Play size={16} color={isDarkTheme ? '#d1d5db' : '#6b7280'} />
+            <h3 style={{ 
+              margin: 0, 
+              fontSize: '16px', 
+              fontWeight: '600',
+              color: isDarkTheme ? '#f9fafb' : '#111827'
+            }}>
+              幻灯片导出
+            </h3>
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px',
+              fontSize: '14px',
+              color: isDarkTheme ? '#d1d5db' : '#374151'
+            }}>
+              分页方式
+            </label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {[
+                { value: 'separators', label: '分割线 --- / --' },
+                { value: 'heading', label: '按标题分页' }
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setLocalConfig({ ...localConfig, slidePagination: opt.value as 'separators' | 'heading' })}
+                  style={{
+                    padding: '6px 12px',
+                    border: localConfig.slidePagination === opt.value 
+                      ? '2px solid #3b82f6' 
+                      : `1px solid ${isDarkTheme ? '#374151' : '#e5e7eb'}`,
+                    borderRadius: '6px',
+                    backgroundColor: localConfig.slidePagination === opt.value 
+                      ? '#3b82f6' 
+                      : 'transparent',
+                    color: localConfig.slidePagination === opt.value ? '#ffffff' : (isDarkTheme ? '#d1d5db' : '#374151'),
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {localConfig.slidePagination === 'heading' && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px',
+                fontSize: '14px',
+                color: isDarkTheme ? '#d1d5db' : '#374151'
+              }}>
+                使用几级标题分页（水平：该级；垂直：该级+1）
+              </label>
+              <select
+                value={localConfig.slideHeadingLevel}
+                onChange={(e) => setLocalConfig({ ...localConfig, slideHeadingLevel: parseInt(e.target.value) })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: `1px solid ${isDarkTheme ? '#374151' : '#e5e7eb'}`,
+                  borderRadius: '6px',
+                  backgroundColor: isDarkTheme ? '#374151' : '#ffffff',
+                  color: isDarkTheme ? '#d1d5db' : '#374151',
+                  fontSize: '14px'
+                }}
+              >
+                {[1,2,3,4,5,6].map(l => (
+                  <option key={l} value={l}>H{l}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px',
+              fontSize: '14px',
+              color: isDarkTheme ? '#d1d5db' : '#374151'
+            }}>
+              导航模式
+            </label>
+            <select
+              value={localConfig.revealNavigationMode}
+              onChange={(e) => setLocalConfig({ ...localConfig, revealNavigationMode: e.target.value as 'default' | 'linear' | 'grid' })}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: `1px solid ${isDarkTheme ? '#374151' : '#e5e7eb'}`,
+                borderRadius: '6px',
+                backgroundColor: isDarkTheme ? '#374151' : '#ffffff',
+                color: isDarkTheme ? '#d1d5db' : '#374151',
+                fontSize: '14px'
+              }}
+            >
+              <option value="default">默认（左右水平，上下垂直）</option>
+              <option value="linear">线性（仅左右）</option>
+              <option value="grid">网格（保持同一垂直索引）</option>
+            </select>
+          </div>
         </div>
         
         {/* Shortcuts Section */}

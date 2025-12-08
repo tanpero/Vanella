@@ -5,6 +5,7 @@ import remarkBreaks from 'remark-breaks'
 import remarkRehype from 'remark-rehype'
 import rehypeStringify from 'rehype-stringify'
 import { toString as mdastToString } from 'mdast-util-to-string'
+import rehypeTableClass from '@/utils/rehype/tableClassPlugin'
 
 export const parseMarkdown = (content: string): string => {
   const file = unified()
@@ -16,6 +17,7 @@ export const parseMarkdown = (content: string): string => {
     .use(remarkAbc)
     .use(remarkToc)
     .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeTableClass)
     .use(rehypeStringify, { allowDangerousHtml: true })
     .processSync(content)
   return String(file)

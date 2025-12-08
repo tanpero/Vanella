@@ -14,6 +14,7 @@ import { gapCursor } from 'prosemirror-gapcursor'
 import { markdownToPmDoc, pmDocToMarkdown } from '@/markdown/convert'
 import { buildInlineDecorations } from '@/modes/classic/inlineMarkdown'
 import '@/styles/editor.css'
+import { tableEditing } from 'prosemirror-tables'
 import { CodeBlockView } from './codeblockView'
 import { MathBlockView } from './mathBlockView'
 import { TaskItemView } from './taskItemView'
@@ -137,6 +138,7 @@ function markerDecorations(state: EditorState): DecorationSet {
               el.setAttribute('data-link-from', String(fromAbs))
               el.setAttribute('data-link-to', String(toAbs))
               el.contentEditable = 'true'
+              ;(el as HTMLElement).tabIndex = -1
               el.style.opacity = '0.6'
               return el
             }))
@@ -163,12 +165,8 @@ export default function ClassicEditor() {
     const run = async () => {
       if (!mountRef.current) return
       const initialText = markdownSource || activeFile?.content || ''
-      let initialDoc
-      try {
-        initialDoc = await markdownToPmDoc(schema, initialText)
-      } catch {
-        initialDoc = schema.node('doc', null, [schema.node('paragraph')])
-      }
+      const isLarge = (initialText.length > 20000) || (initialText.split(/\n/).length > 1200)
+      const initialDoc = schema.node('doc', null, [schema.node('paragraph')])
       const state = EditorState.create({
         doc: initialDoc as PMNode,
         schema,
@@ -176,6 +174,7 @@ export default function ClassicEditor() {
           dropCursor(),
           gapCursor(),
           history(),
+          tableEditing(),
           new Plugin({
             appendTransaction: (trs, oldState, newState) => {
               if (!trs.some(t => t.docChanged)) return null
@@ -492,6 +491,10 @@ export default function ClassicEditor() {
                       const pos = view.posAtDOM(el, 0)
                       const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, Math.max(1, pos)))
                       view.dispatch(tr)
+                      setTimeout(() => {
+                        const elHref = (view.dom as HTMLElement).querySelector('[data-marker="link-href"]') as HTMLElement | null
+                        elHref?.focus()
+                      }, 0)
                       return true
                     }
                   }
@@ -599,6 +602,52 @@ export default function ClassicEditor() {
       })
       viewRef.current = view
       setPmView(view)
+
+      if (isLarge) {
+        const { setLoading, clearLoading } = useEditorStore.getState()
+        setLoading({ active: true, stage: '解析中', percent: 1, cancellable: false })
+        const lines = initialText.split(/\n/)
+        const batchLines = 60
+        const blocks: string[] = []
+        for (let i = 0; i < lines.length; i += batchLines) {
+          blocks.push(lines.slice(i, i + batchLines).join('\n'))
+        }
+        const batchSize = 25
+        let inserted = 0
+        let failed = false
+        for (let i = 0; i < blocks.length; i += batchSize) {
+          const batch = blocks.slice(i, i + batchSize).join('\n\n')
+          try {
+            const mini = await markdownToPmDoc(schema, batch)
+            const children: PMNode[] = []
+            mini.forEach((n) => { children.push(n as PMNode) })
+            const end = view.state.doc.content.size
+            const tr = view.state.tr.insert(end, children)
+            view.dispatch(tr)
+            inserted += batch.length
+            const percent = Math.min(95, Math.max(1, Math.round((inserted / initialText.length) * 95)))
+            setLoading({ active: true, stage: '构建中', percent })
+          } catch {
+            failed = true
+            break
+          }
+          await new Promise(r => requestAnimationFrame(() => r(undefined)))
+        }
+        if (failed) {
+          try {
+            const full = await markdownToPmDoc(schema, initialText)
+            const tr = view.state.tr.replaceWith(1, view.state.doc.content.size + 1, full.content)
+            view.dispatch(tr)
+          } catch (e) { console.warn(e) }
+        }
+        clearLoading()
+      } else {
+        try {
+          const full = await markdownToPmDoc(schema, initialText)
+          const tr = view.state.tr.replaceWith(1, view.state.doc.content.size + 1, full.content)
+          view.dispatch(tr)
+        } catch { return }
+      }
     }
     run()
     return () => {

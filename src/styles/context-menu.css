@@ -9,6 +9,8 @@
 .ctx-item:hover, .ctx-btn:hover, .ctx-icon:hover { background: #f3f4f6; }
 .dark .ctx-item:hover, .dark .ctx-btn:hover, .dark .ctx-icon:hover { background: #1f2937; }
 .ctx-item[disabled] { opacity: .5; cursor: default; }
+.ctx-item.has-sub { position: relative; }
+.ctx-item.has-sub::after { content: '›'; position: absolute; right: 10px; opacity: .6; }
 .ctx-sub { position: relative; }
 .ctx-sub > summary { list-style: none; cursor: pointer; padding: 6px 10px; border-radius: 6px; }
 .ctx-sub[open] > summary { background: #f3f4f6; }
@@ -17,3 +19,5 @@
 .ctx-sub > summary::after { content: '›'; float: right; opacity: .6; }
 .ctx-sub[open] > summary::after { content: '‹'; }
 .ctx-sub > .ctx-item { margin-left: 6px; }
+
+.ctx-submenu { min-width: 220px; }

@@ -10,6 +10,9 @@ export interface AppConfig {
   imageCaptionBelowCentered?: boolean
   codeblockThemeLight?: string
   codeblockThemeDark?: string
+  slidePagination?: 'separators' | 'heading'
+  slideHeadingLevel?: number
+  revealNavigationMode?: 'default' | 'linear' | 'grid'
 }
 
 export interface FileState {
@@ -28,6 +31,14 @@ export interface EditorState {
   selectedText: string
   isPreviewMode: boolean
   scrollPosition: number
+}
+
+export interface LoadingState {
+  active: boolean
+  stage: string
+  percent: number
+  note: string
+  cancellable: boolean
 }
 
 export interface ToolbarAction {

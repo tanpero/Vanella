@@ -16,7 +16,9 @@ import {
   FolderOpen,
   Settings,
   Download,
-  FileCode
+  FileCode,
+  Table,
+  Play
 } from 'lucide-react'
 import { useEditorStore } from '@/stores/editorStore'
 
@@ -28,6 +30,8 @@ interface ToolbarProps {
   onSaveFile?: () => void
   onExportMarkdown?: () => void
   onExportHTML?: () => void
+  onExportSlides?: () => void
+  onPreviewSlides?: () => void
 }
 
 export default function Toolbar({ 
@@ -37,9 +41,11 @@ export default function Toolbar({
   onOpenFile,
   onSaveFile,
   onExportMarkdown,
-  onExportHTML
+  onExportHTML,
+  onExportSlides,
+  onPreviewSlides
 }: ToolbarProps) {
-  const { activeFile, config, toggleSettings, editorMode, setEditorMode, runClassicCommand, pickDirectory } = useEditorStore()
+  const { activeFile, config, toggleSettings, editorMode, setEditorMode, runClassicCommand, pickDirectory, showTableDialog } = useEditorStore()
   
   const isDarkTheme = config.theme === 'dark'
   
@@ -71,6 +77,16 @@ export default function Toolbar({
       action: () => run('heading', { level: 3 })
     },
     { type: 'separator' },
+    {
+      id: 'table',
+      icon: Table,
+      title: 'Table',
+      shortcut: 'Ctrl+T',
+      action: () => {
+        if (editorMode === 'classic') runClassicCommand('table')
+        else showTableDialog(window.innerWidth / 2, 80)
+      }
+    },
     {
       id: 'bold',
       icon: Bold,
@@ -175,6 +191,20 @@ export default function Toolbar({
       title: 'Export as HTML',
       shortcut: 'Ctrl+Shift+H',
       action: onExportHTML
+    },
+    {
+      id: 'export-slides',
+      icon: Play,
+      title: 'Export Slides (Reveal.js)',
+      shortcut: 'Ctrl+Shift+R',
+      action: onExportSlides
+    },
+    {
+      id: 'preview-slides',
+      icon: Play,
+      title: 'Preview Slides',
+      shortcut: 'Ctrl+Shift+P',
+      action: onPreviewSlides
     }
   ]
   

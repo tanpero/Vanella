@@ -11,6 +11,7 @@ export class ImageView implements NodeView {
   captionEl: HTMLElement | null
   showMarkers: boolean
   captionCentered: boolean
+  onDocMouseDown?: (ev: MouseEvent) => void
 
   constructor(node: PMNode, view: EditorView, getPos: () => number, captionCentered: boolean) {
     this.node = node
@@ -78,6 +79,14 @@ export class ImageView implements NodeView {
       this.toggleMarkers(true)
     })
 
+    this.onDocMouseDown = (ev: MouseEvent) => {
+      const t = ev.target as Node | null
+      if (!t) return
+      const inside = this.dom.contains(t)
+      if (!inside) this.toggleMarkers(false)
+    }
+    document.addEventListener('mousedown', this.onDocMouseDown, { capture: true })
+
     const commit = () => {
       const pos = this.getPos()
       const nextAlt = mAlt.textContent || ''
@@ -113,7 +122,9 @@ export class ImageView implements NodeView {
     return true
   }
 
-  destroy() {}
+  destroy() {
+    if (this.onDocMouseDown) document.removeEventListener('mousedown', this.onDocMouseDown, true)
+  }
 
   stopEvent(event: Event) {
     const target = event.target as HTMLElement

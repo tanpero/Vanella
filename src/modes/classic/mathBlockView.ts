@@ -113,7 +113,6 @@ export class MathBlockView {
 
     const box = document.createElement('div')
     box.style.display = 'none'
-    box.style.borderTop = '1px solid #e5e7eb'
     box.style.padding = '6px 8px'
 
     // remove env input field; use radio group only

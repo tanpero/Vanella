@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { AppConfig, FileState, EditorState, EditorTab, FileTreeNode } from '@/types/editor'
+import { AppConfig, FileState, EditorState, EditorTab, FileTreeNode, LoadingState } from '@/types/editor'
 import { generateId } from '@/utils/markdown'
 import type { EditorView } from 'prosemirror-view'
 import type { Transaction } from 'prosemirror-state'
@@ -64,6 +64,15 @@ interface EditorStore {
   hideImageCard: () => void
   confirmInsertImage: (src: string, alt?: string) => void
 
+  // Table insert dialog
+  tableDialogVisible: boolean
+  tableDialogX: number
+  tableDialogY: number
+  showTableDialog: (x: number, y: number) => void
+  hideTableDialog: () => void
+  confirmInsertTable: (rows: number, cols: number, header: boolean, aligns: Array<'left'|'center'|'right'>) => void
+  runSourceTableCommand?: (cmd: 'row_add_above'|'row_add_below'|'col_add_left'|'col_add_right'|'row_delete'|'col_delete') => void
+
   // Preview toggle
   previewVisible: boolean
   togglePreview: () => void
@@ -76,6 +85,11 @@ interface EditorStore {
   // Basic file actions
   newFile: () => void
   saveFile: () => void
+
+  // Loading overlay
+  loadingState: LoadingState
+  setLoading: (state: Partial<LoadingState>) => void
+  clearLoading: () => void
 }
 
 const defaultConfig: AppConfig = {
@@ -89,7 +103,10 @@ const defaultConfig: AppConfig = {
   defaultExportPath: '',
   imageCaptionBelowCentered: false,
   codeblockThemeLight: 'material-light',
-  codeblockThemeDark: 'monokai'
+  codeblockThemeDark: 'monokai',
+  slidePagination: 'separators',
+  slideHeadingLevel: 2,
+  revealNavigationMode: 'default'
 }
 
 const defaultEditorState: EditorState = {
@@ -217,9 +234,11 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
           dispatch(state.tr.replaceSelectionWith(schema.nodes.math_block.create()))
           break
         }
-        case 'table':
-          // placeholder only
+        case 'table': {
+          const { showTableDialog } = useEditorStore.getState()
+          showTableDialog(window.innerWidth / 2, 80)
           break
+        }
       }
     } catch (e) { console.warn(e) }
   },
@@ -368,6 +387,106 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   
   previewVisible: true,
   togglePreview: () => set((state) => ({ previewVisible: !state.previewVisible })),
+
+  tableDialogVisible: false,
+  tableDialogX: 0,
+  tableDialogY: 0,
+  showTableDialog: (x: number, y: number) => set({ tableDialogVisible: true, tableDialogX: x, tableDialogY: y, ctxVisible: false }),
+  hideTableDialog: () => set({ tableDialogVisible: false }),
+  confirmInsertTable: (rows: number, cols: number, header: boolean, aligns: Array<'left'|'center'|'right'>) => {
+    const { pmView, editorMode, markdownSource, editorState, setMarkdownSource } = useEditorStore.getState() as any
+    if (editorMode === 'classic') {
+      if (!pmView) return
+      const state = pmView.state
+      const schema = state.schema
+      const makeRow = (isHeader: boolean) => {
+        const cells = [] as import('prosemirror-model').Node[]
+        for (let c = 0; c < cols; c++) {
+          const cellType = isHeader ? (schema.nodes as any).table_header : (schema.nodes as any).table_cell
+          const cell = cellType.create(null, [schema.nodes.paragraph.create(null, [])])
+          cells.push(cell)
+        }
+        return (schema.nodes as any).table_row.create(null, cells)
+      }
+      const children = [] as import('prosemirror-model').Node[]
+      if (header) children.push(makeRow(true))
+      for (let r = 0; r < rows; r++) children.push(makeRow(false))
+      const table = (schema.nodes as any).table.create({ colalign: aligns }, children)
+      pmView.dispatch(state.tr.replaceSelectionWith(table))
+    } else {
+      const alignToken = (a: 'left'|'center'|'right') => a === 'left' ? ':---' : (a === 'center' ? ':---:' : '---:')
+      const headerLine = header ? `| ${Array.from({ length: cols }).map((_, i) => `Header ${i + 1}`).join(' | ')} |\n` : `| ${Array.from({ length: cols }).map(() => ' ').join(' | ')} |\n`
+      const alignLine = `| ${aligns.slice(0, cols).map(alignToken).join(' | ')} |\n`
+      const bodyLines = Array.from({ length: rows }).map((_, r) => `| ${Array.from({ length: cols }).map((_, c) => `Cell ${r + 1}-${c + 1}`).join(' | ')} |`).join('\n')
+      const snippet = `${headerLine}${alignLine}${bodyLines}\n`
+      const pos = (editorState?.cursorPosition || 0) as number
+      const before = (markdownSource || '').slice(0, pos)
+      const after = (markdownSource || '').slice(pos)
+      setMarkdownSource(before + snippet + after)
+    }
+    set({ tableDialogVisible: false })
+  },
+  runSourceTableCommand: (cmd) => {
+    const { markdownSource, editorState, setMarkdownSource } = useEditorStore.getState() as any
+    const content = markdownSource || ''
+    const pos = (editorState?.cursorPosition || 0) as number
+    const lines = content.split(/\n/)
+    let charCount = 0
+    let lineIdx = 0
+    for (let i = 0; i < lines.length; i++) {
+      const next = charCount + lines[i].length + 1
+      if (pos <= next) { lineIdx = i; break }
+      charCount = next
+    }
+    const isTableLine = (s: string) => /^\s*\|.*\|\s*$/.test(s)
+    let start = lineIdx
+    let end = lineIdx
+    if (!isTableLine(lines[lineIdx])) return
+    while (start > 0 && isTableLine(lines[start - 1])) start--
+    while (end < lines.length - 1 && isTableLine(lines[end + 1])) end++
+    const region = lines.slice(start, end + 1)
+    const colCount = Math.max(...region.map(l => l.split('|').filter(x => x.trim().length > 0).length))
+    const makeRow = () => `| ${Array.from({ length: colCount }).map((_, i) => `Cell ${i + 1}`).join(' | ')} |`
+    const alignRow = () => `| ${Array.from({ length: colCount }).map(() => ':---').join(' | ')} |`
+    const isAlignLine = (s: string) => /^\s*\|\s*(:?-+:?\s*\|\s*)+\s*$/.test(s)
+    const idxAlign = region.findIndex(isAlignLine)
+    const headerExists = idxAlign > 0
+    const bodyStart = headerExists ? (start + idxAlign + 1) : start
+    if (cmd === 'row_add_above') {
+      const insertAt = bodyStart
+      lines.splice(insertAt, 0, makeRow())
+    } else if (cmd === 'row_add_below') {
+      const insertAt = lineIdx + 1
+      lines.splice(insertAt, 0, makeRow())
+    } else if (cmd === 'row_delete') {
+      lines.splice(lineIdx, 1)
+    } else if (cmd === 'col_add_left' || cmd === 'col_add_right' || cmd === 'col_delete') {
+      const currentLine = lines[lineIdx]
+      const parts = currentLine.split('|')
+      const cells = parts.map(s => s.trim())
+      const nonEmptyIndexMap = [] as number[]
+      for (let i = 0; i < cells.length; i++) if (cells[i].length > 0) nonEmptyIndexMap.push(i)
+      const currentCellIdx = nonEmptyIndexMap.findIndex((idx, k) => k === 0 ? (pos <= charCount + parts.slice(0, idx).join('|').length) : false) // fallback to first cell
+      const targetIdx = Math.max(0, currentCellIdx)
+      for (let i = start; i <= end; i++) {
+        const seg = lines[i].split('|')
+        const items = seg.map(s => s.trim())
+        const idxs = [] as number[]
+        for (let j = 0, k = 0; j < items.length; j++) if (items[j].length > 0) { idxs.push(j); k++ }
+        const j = idxs[targetIdx] || idxs[0] || 1
+        if (cmd === 'col_add_left') {
+          items.splice(j, 0, i === start ? 'Header' : 'Cell')
+        } else if (cmd === 'col_add_right') {
+          items.splice(j + 1, 0, i === start ? 'Header' : 'Cell')
+        } else {
+          items.splice(j, 1)
+        }
+        lines[i] = `| ${items.filter(s => s.length > 0).join(' | ')} |`
+      }
+      if (idxAlign >= 0) lines[start + idxAlign] = alignRow()
+    }
+    setMarkdownSource(lines.join('\n'))
+  },
   
   editorRef: null as { insertSyntax: (syntax: string, placeholder?: string) => void } | null,
   setEditorRef: (ref: { insertSyntax: (syntax: string, placeholder?: string) => void } | null) => 
@@ -424,6 +543,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       )
     }))
   }
+  ,
+  loadingState: { active: false, stage: '', percent: 0, note: '', cancellable: false },
+  setLoading: (state) => set((prev) => ({ loadingState: { ...prev.loadingState, ...state } })),
+  clearLoading: () => set({ loadingState: { active: false, stage: '', percent: 0, note: '', cancellable: false } })
 }))
 function findDirHandleByPath(tree: FileTreeNode[], path: string): FileSystemDirectoryHandle | null {
   for (const n of tree) {

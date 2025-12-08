@@ -177,7 +177,12 @@ export class CodeBlockView {
         drawSelection(),
         dropCursor(),
         highlightActiveLine(),
-        syntaxHighlighting(defaultHighlightStyle)
+        syntaxHighlighting(defaultHighlightStyle),
+        CMEditorView.theme({
+          '&': { fontSize: '15px' },
+          '.cm-scroller, .cm-content, .cm-line': { fontFamily: 'Consolas, Monaco, monospace' },
+          '.cm-content': { padding: '8px' }
+        })
       ]
       this.dark = curDark
       const themeExt = mapTheme(themeKey, this.dark)

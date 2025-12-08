@@ -3,6 +3,8 @@ import ClassicEditor from '@/modes/classic/ClassicEditor'
 import SourceEditor from '@/modes/source/SourceEditor'
 import ContextMenu from '@/components/ContextMenu'
 import InsertImageCard from '@/components/InsertImageCard'
+import InsertTableDialog from '@/components/InsertTableDialog'
+import TableToolbar from '@/modes/classic/ui/TableToolbar'
 
 export default function EditorShell() {
   const { editorMode } = useEditorStore()
@@ -11,6 +13,8 @@ export default function EditorShell() {
       {editorMode === 'classic' ? <ClassicEditor /> : <SourceEditor />}
       <ContextMenu />
       <InsertImageCard />
+      <InsertTableDialog />
+      <TableToolbar />
     </div>
   )
 }

@@ -3,12 +3,14 @@ import Toolbar from '@/components/Toolbar'
 import Sidebar from '@/components/Sidebar'
 import EditorShell from '@/modes/EditorShell'
 import StatusBar from '@/components/StatusBar'
+import ProgressOverlay from '@/components/ProgressOverlay'
 import SettingsPanel from '@/components/SettingsPanel'
+import SlidesPreview from '@/components/SlidesPreview'
 import { useEditorStore } from '@/stores/editorStore'
 import { FileState, EditorTab } from '@/types/editor'
 import { generateId } from '@/utils/markdown'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { exportMarkdown, exportHTML } from '@/utils/export'
+import { exportMarkdown, exportHTML, exportReveal } from '@/utils/export'
 
 export default function Home() {
   const editorRef = useRef<{ insertSyntax: (syntax: string, placeholder?: string) => void }>(null)
@@ -26,6 +28,7 @@ export default function Home() {
   } = useEditorStore()
   
   const isDarkTheme = config.theme === 'dark'
+  const [slidesPreviewVisible, setSlidesPreviewVisible] = React.useState(false)
   
   // Initialize keyboard shortcuts
   useKeyboardShortcuts()
@@ -65,7 +68,7 @@ Visit [OpenAI](https://openai.com) and edit the link in place.
 
 ### Images
 
-![Sample image](https://pixabay.com/get/gb868cfa26a54e8e17b43141f62f5db9e86e3083977f48bece512a3c6447e51d0db57ebdc39f6d0b4f4216ac340f5076e.jpg)
+![Sample image](https://cdn.pixabay.com/photo/2025/10/24/16/14/fog-9914605_1280.jpg)
 
 If caption below is enabled in settings, the alt text appears centered under the image.
 
@@ -225,6 +228,15 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
       await exportHTML(activeFile.content, activeFile.name.replace('.md', '.html'))
     }
   }
+
+  const handleExportSlides = async () => {
+    if (activeFile?.content) {
+      await exportReveal(activeFile.content, activeFile.name.replace('.md', '.slides.html'))
+    }
+  }
+  const handlePreviewSlides = async () => {
+    if (activeFile?.content) setSlidesPreviewVisible(true)
+  }
   
   return (
     <div 
@@ -244,6 +256,8 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
         onSaveFile={handleSaveFile}
         onExportMarkdown={handleExportMarkdown}
         onExportHTML={handleExportHTML}
+        onExportSlides={handleExportSlides}
+        onPreviewSlides={handlePreviewSlides}
       />
       
       {/* Main content area */}
@@ -290,10 +304,20 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
       
       {/* Status Bar */}
       <StatusBar onTogglePreview={handleTogglePreview} />
+      <ProgressOverlay />
       
       {/* Settings Panel */}
       {settingsVisible && (
         <SettingsPanel onClose={toggleSettings} />
+      )}
+
+      {slidesPreviewVisible && activeFile?.content && (
+        <SlidesPreview
+          visible={slidesPreviewVisible}
+          content={activeFile.content}
+          title={activeFile.name.replace('.md', '')}
+          onClose={() => setSlidesPreviewVisible(false)}
+        />
       )}
     </div>
   )

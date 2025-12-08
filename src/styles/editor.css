@@ -38,6 +38,15 @@
 .pm-editor a { color: #2563eb; text-decoration: none; }
 .pm-editor a:hover { text-decoration: underline; }
 
+/* Tables */
+.pm-editor table { border-collapse: collapse; width: 80%; margin: .8rem auto; }
+.pm-editor th, .pm-editor td { border: 1px solid #e5e7eb; padding: .5rem .6rem; text-align: left; }
+.pm-editor.dark th, .pm-editor.dark td { border-color: #374151; }
+.pm-editor tbody tr:nth-child(odd) { background: #f9fafb; }
+.pm-editor.dark tbody tr:nth-child(odd) { background: rgba(55,65,81,.2); }
+.pm-editor th { background: #f3f4f6; font-weight: 600; }
+.pm-editor.dark th { background: #1f2937; }
+
 .pm-editor img { max-width: 80%; height: auto; border-radius: 8px; display: block; margin: .6rem auto; }
 
 html, body { height: 100%; overflow: hidden; }
@@ -91,7 +100,7 @@ html, body { height: 100%; overflow: hidden; }
 .pm-math-inline mjx-container, .pm-math-inline svg { background: transparent !important; }
 .pm-math-inline mjx-container rect[data-background], .pm-math-inline-preview mjx-container rect[data-background], .pm-math-block-preview mjx-container rect[data-background] { fill: transparent !important; stroke: transparent !important; }
 .pm-math-inline [data-mml-node="merror"], .pm-math-inline-preview [data-mml-node="merror"], .pm-math-block-preview [data-mml-node="merror"] { color: #dc2626 !important; }
-.pm-math-block { border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin: .8rem 0; }
+.pm-math-block { border-radius: 8px; overflow: hidden; margin: .8rem 0; }
 .pm-editor.dark .pm-math-block { border-color: #374151; }
 .pm-math-block-preview { background: transparent; }
 .pm-editor.dark .pm-math-block-preview { background: transparent; }

@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useCallback } from 'react'
 import { EditorView, drawSelection, dropCursor, highlightActiveLine } from '@codemirror/view'
 import { markdown } from '@codemirror/lang-markdown'
 import { EditorState } from '@codemirror/state'
-import { oneDark } from '@codemirror/theme-one-dark'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { keymap } from '@codemirror/view'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { useEditorStore } from '@/stores/editorStore'
 import { insertMarkdownSyntax } from '@/utils/markdown'
+import { mapTheme } from '@/modes/shared/codemirrorConfig'
 
 interface MarkdownEditorProps {
   className?: string
@@ -33,6 +33,7 @@ const MarkdownEditor = React.forwardRef<{
   } = useEditorStore()
   
   const isDarkTheme = config.theme === 'dark'
+  const suppressSyncRef = useRef(false)
   
   const handleContentChange = useCallback((content: string) => {
     setMarkdownSource(content)
@@ -40,12 +41,8 @@ const MarkdownEditor = React.forwardRef<{
   }, [setMarkdownSource, onChange])
   
   const handleSelectionChange = useCallback((selection: { from: number; to: number }) => {
-    setEditorState({ 
-      cursorPosition: selection.from,
-      selectedText: markdownSource.slice(selection.from, selection.to) || ''
-    })
     onSelectionChange?.(selection)
-  }, [setEditorState, markdownSource, onSelectionChange])
+  }, [onSelectionChange])
   
   useEffect(() => {
     if (!editorRef.current) return
@@ -63,12 +60,15 @@ const MarkdownEditor = React.forwardRef<{
         if (update.docChanged) {
           const content = update.state.doc.toString()
           handleContentChange(content)
+          suppressSyncRef.current = true
         }
         if (update.selectionSet) {
           const selection = update.state.selection.main
-          handleSelectionChange({
-            from: selection.from,
-            to: selection.to
+          const docText = update.state.doc.toString()
+          onSelectionChange?.({ from: selection.from, to: selection.to })
+          setEditorState({
+            cursorPosition: selection.from,
+            selectedText: docText.slice(selection.from, selection.to) || ''
           })
         }
       }),
@@ -93,12 +93,9 @@ const MarkdownEditor = React.forwardRef<{
         '.cm-selectionBackground': {
           backgroundColor: isDarkTheme ? '#264f78' : '#add6ff'
         }
-      })
+      }),
+      mapTheme(isDarkTheme ? 'material-dark' : 'material-light', isDarkTheme)
     ]
-    
-    if (isDarkTheme) {
-      extensions.push(oneDark)
-    }
     
     const state = EditorState.create({
       doc: markdownSource || '',
@@ -116,18 +113,18 @@ const MarkdownEditor = React.forwardRef<{
       view.destroy()
       viewRef.current = null
     }
-  }, [isDarkTheme, config.fontSize, markdownSource, handleContentChange, handleSelectionChange])
+  }, [isDarkTheme, config.fontSize, markdownSource, handleContentChange, setEditorState])
   
   useEffect(() => {
     if (viewRef.current) {
+      if (suppressSyncRef.current) { suppressSyncRef.current = false; return }
       const currentContent = viewRef.current.state.doc.toString()
       if (currentContent !== markdownSource) {
+        const sel = viewRef.current.state.selection.main
+        const nextLen = (markdownSource || '').length
         viewRef.current.dispatch({
-          changes: {
-            from: 0,
-            to: viewRef.current.state.doc.length,
-            insert: markdownSource
-          }
+          changes: { from: 0, to: viewRef.current.state.doc.length, insert: markdownSource },
+          selection: { anchor: Math.min(sel.from, nextLen), head: Math.min(sel.to, nextLen) }
         })
       }
     }
@@ -135,7 +132,7 @@ const MarkdownEditor = React.forwardRef<{
   
   useEffect(() => {
     if (viewRef.current) {
-      // Reconfigure editor with new extensions
+      const prevSel = viewRef.current.state.selection.main
       const newState = EditorState.create({
         doc: viewRef.current.state.doc.toString(),
         extensions: [
@@ -153,18 +150,42 @@ const MarkdownEditor = React.forwardRef<{
             }
             if (update.selectionSet) {
               const selection = update.state.selection.main
-              handleSelectionChange({
-                from: selection.from,
-                to: selection.to
+              const docText = update.state.doc.toString()
+              setEditorState({
+                cursorPosition: selection.from,
+                selectedText: docText.slice(selection.from, selection.to) || ''
               })
             }
-          })
+          }),
+          EditorView.theme({
+            '&': {
+              fontSize: `${config.fontSize}px`,
+              fontFamily: 'Consolas, Monaco, monospace'
+            },
+            '.cm-content': {
+              padding: '16px',
+              minHeight: '100%'
+            },
+            '.cm-line': {
+              padding: '0 8px'
+            },
+            '.cm-focused': {
+              outline: 'none'
+            },
+            '.cm-cursor': {
+              borderLeftWidth: '2px'
+            },
+            '.cm-selectionBackground': {
+              backgroundColor: isDarkTheme ? '#264f78' : '#add6ff'
+            }
+          }),
+          mapTheme(isDarkTheme ? 'material-dark' : 'material-light', isDarkTheme)
         ]
       })
-      
       viewRef.current.setState(newState)
+      viewRef.current.dispatch({ selection: { anchor: prevSel.from, head: prevSel.to } })
     }
-  }, [isDarkTheme, config.fontSize, config.fontFamily, handleContentChange, handleSelectionChange])
+  }, [isDarkTheme, config.fontSize, config.fontFamily, handleContentChange, setEditorState])
   
   const insertSyntax = (syntax: string, placeholder?: string) => {
     if (!viewRef.current) return

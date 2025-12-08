@@ -23,7 +23,8 @@ async function prerenderDiagrams(html: string): Promise<string> {
   const mermaidEls = Array.from(wrapper.querySelectorAll('.mermaid')) as HTMLElement[]
   if (mermaidEls.length) {
     try {
-      const mermaidMod: unknown = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')
+      const mermaidUrl = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs'
+      const mermaidMod: unknown = await import(/* @vite-ignore */ mermaidUrl as any)
       const mermaid: MermaidLib = (mermaidMod as { default?: MermaidLib }).default || (mermaidMod as MermaidLib)
       mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default' })
       let idx = 0
@@ -46,7 +47,8 @@ async function prerenderDiagrams(html: string): Promise<string> {
   const abcEls = Array.from(wrapper.querySelectorAll('.abc-block')) as HTMLElement[]
   if (abcEls.length) {
     try {
-      const ABCJSMod: unknown = await import(/* @vite-ignore */ 'https://esm.sh/abcjs@6.2.0?min')
+      const abcUrl = 'https://esm.sh/abcjs@6.2.0?min'
+      const ABCJSMod: unknown = await import(/* @vite-ignore */ abcUrl as any)
       const ABCJS: AbcjsLib = (ABCJSMod as { default?: AbcjsLib }).default || (ABCJSMod as AbcjsLib)
       for (const el of abcEls) {
         const src = el.getAttribute('data-src') || ''
@@ -91,7 +93,8 @@ async function renderCodeBlockWithCM(lang: string, src: string): Promise<{ html:
   const langExt = mapLanguage(lang)
   const state = CMState.create({ doc: src, extensions: Array.isArray(langExt) ? langExt : [langExt] })
   const tree = syntaxTree(state)
-  const mod = await import(/* @vite-ignore */ 'https://esm.sh/@lezer/highlight@1.2.0?min')
+  const lezerUrl = 'https://esm.sh/@lezer/highlight@1.2.0?min'
+  const mod = await import(/* @vite-ignore */ lezerUrl as any)
   const highlightTree: (t: unknown, h: unknown, cb: (from: number, to: number, cls: string) => void) => void = (mod as { highlightTree: (t: unknown, h: unknown, cb: (from: number, to: number, cls: string) => void) => void }).highlightTree
   const classHighlighter: unknown = (mod as { classHighlighter: unknown }).classHighlighter
   const tokens: { text: string; cls?: string }[] = []
@@ -358,5 +361,652 @@ export const exportMarkdown = (content: string, filename: string = 'document.md'
 
 export const exportHTML = async (content: string, filename: string = 'document.html') => {
   const htmlContent = await exportToHTML(content)
+  downloadFile(htmlContent, filename, 'text/html')
+}
+
+function splitMarkdownToSlideStacks(md: string): string[][] {
+  const lines = md.split(/\r?\n/)
+  const stacks: string[][] = []
+  let currentStack: string[] = []
+  let currentSlide: string[] = []
+  const flushSlide = () => {
+    const body = currentSlide.join('\n').trim()
+    currentSlide = []
+    if (body.length === 0) return
+    currentStack.push(body)
+  }
+  const flushStack = () => {
+    flushSlide()
+    if (currentStack.length === 0) return
+    stacks.push(currentStack)
+    currentStack = []
+  }
+  for (const ln of lines) {
+    if (/^\s*---\s*$/.test(ln)) { flushStack(); continue }
+    if (/^\s*--\s*$/.test(ln)) { flushSlide(); continue }
+    currentSlide.push(ln)
+  }
+  flushStack()
+  return stacks.length ? stacks : [[md]]
+}
+
+ 
+
+type Block = { kind: 'heading'|'paragraph'|'code'|'image'|'list'|'blockquote'|'math'|'hr'|'toc'; level?: number; text: string }
+
+function tokenizeBlocks(md: string): Block[] {
+  const lines = md.split(/\r?\n/)
+  const blocks: Block[] = []
+  let i = 0
+  let buf: string[] = []
+  const flushPara = () => {
+    const t = buf.join('\n').trim()
+    buf = []
+    if (!t) return
+    blocks.push({ kind: 'paragraph', text: t })
+  }
+  let inCode = false
+  let codeLang = ''
+  let codeBuf: string[] = []
+  let inMath = false
+  let mathBuf: string[] = []
+  let listBuf: string[] = []
+  let inList = false
+  let quoteBuf: string[] = []
+  let inQuote = false
+  while (i < lines.length) {
+    const ln = lines[i]
+    const lnTrim = (ln || '').trim().toLowerCase()
+    if (lnTrim === '[toc]') {
+      flushPara()
+      blocks.push({ kind: 'toc', text: '[toc]' })
+      i++
+      continue
+    }
+    if (!inCode && /^\s*```/.test(ln)) {
+      flushPara()
+      inCode = true
+      codeLang = ln.replace(/^\s*```\s*/, '')
+      codeBuf = []
+      i++
+      continue
+    }
+    if (inCode) {
+      if (/^\s*```\s*$/.test(ln)) {
+        blocks.push({ kind: 'code', text: '```' + codeLang + '\n' + codeBuf.join('\n') + '\n```' })
+        inCode = false
+        codeLang = ''
+        codeBuf = []
+        i++
+        continue
+      }
+      codeBuf.push(ln)
+      i++
+      continue
+    }
+    if (!inMath && /^\s*\$\$\s*$/.test(ln)) {
+      flushPara()
+      inMath = true
+      mathBuf = ['$$']
+      i++
+      continue
+    }
+    if (inMath) {
+      mathBuf.push(ln)
+      if (/^\s*\$\$\s*$/.test(ln)) {
+        blocks.push({ kind: 'math', text: mathBuf.join('\n') })
+        inMath = false
+        mathBuf = []
+      }
+      i++
+      continue
+    }
+    if (!inList && /^\s*(?:[-*+]\s+|\d+\.\s+)/.test(ln)) {
+      flushPara()
+      inList = true
+      listBuf = [ln]
+      i++
+      continue
+    }
+    if (inList) {
+      if (/^\s*(?:[-*+]\s+|\d+\.\s+)/.test(ln)) {
+        listBuf.push(ln)
+        i++
+        continue
+      }
+      blocks.push({ kind: 'list', text: listBuf.join('\n') })
+      inList = false
+      listBuf = []
+      continue
+    }
+    if (!inQuote && /^\s*>\s?/.test(ln)) {
+      flushPara()
+      inQuote = true
+      quoteBuf = [ln]
+      i++
+      continue
+    }
+    if (inQuote) {
+      if (/^\s*>\s?/.test(ln)) {
+        quoteBuf.push(ln)
+        i++
+        continue
+      }
+      blocks.push({ kind: 'blockquote', text: quoteBuf.join('\n') })
+      inQuote = false
+      quoteBuf = []
+      continue
+    }
+    if (/^\s*---\s*$/.test(ln)) {
+      flushPara()
+      blocks.push({ kind: 'hr', text: ln })
+      i++
+      continue
+    }
+    const h = /^(\s*#{1,6})\s+(.*)$/.exec(ln)
+    if (h) {
+      flushPara()
+      const level = h[1].trim().length
+      blocks.push({ kind: 'heading', level, text: ln })
+      i++
+      continue
+    }
+    const img = /^\s*!\[[^\]]*\]\([^)]*\)\s*$/.test(ln)
+    if (img) {
+      flushPara()
+      blocks.push({ kind: 'image', text: ln })
+      i++
+      continue
+    }
+    if (/^\s*$/.test(ln)) {
+      flushPara()
+      i++
+      continue
+    }
+    buf.push(ln)
+    i++
+  }
+  flushPara()
+  if (inList && listBuf.length) blocks.push({ kind: 'list', text: listBuf.join('\n') })
+  if (inQuote && quoteBuf.length) blocks.push({ kind: 'blockquote', text: quoteBuf.join('\n') })
+  return blocks
+}
+
+function textPoints(t: string): number {
+  const len = t.length
+  return Math.max(1, Math.ceil(len / 800))
+}
+
+function blockPoints(b: Block): number {
+  if (b.kind === 'image') return 6
+  if (b.kind === 'code') return Math.max(2, Math.ceil(b.text.split('\n').length / 14))
+  if (b.kind === 'list') return Math.max(1, Math.ceil(b.text.split('\n').length / 20))
+  if (b.kind === 'blockquote') return textPoints(b.text)
+  if (b.kind === 'math') return 6
+  if (b.kind === 'paragraph') return textPoints(b.text)
+  return 1
+}
+
+function splitParagraphByLength(t: string, maxChars: number): string[] {
+  const parts: string[] = []
+  let current = ''
+  const push = () => { if (current.trim().length) { parts.push(current.trim()); current = '' } }
+  const sentences = t.split(/(?<=\.|!|\?|。|！|？)\s+/)
+  for (const s of sentences) {
+    if ((current + ' ' + s).trim().length > maxChars) push()
+    current = current.length ? current + ' ' + s : s
+  }
+  push()
+  return parts.length ? parts : [t]
+}
+
+function packBlocksIntoSlides(blocks: Block[], firstSlidePrefix: string | null): string[] {
+  const slides: string[] = []
+  const MAX_POINTS = 18
+  let acc: Block[] = []
+  let pts = 0
+  const flush = () => {
+    if (!acc.length) return
+    const md = acc.map(b => b.text).join('\n\n').trim()
+    slides.push(md)
+    acc = []
+    pts = 0
+  }
+  let prefixUsed = false
+  for (let idx = 0; idx < blocks.length; idx++) {
+    const b = blocks[idx]
+    if (b.kind === 'paragraph') {
+      const big = splitParagraphByLength(b.text, 900)
+      for (const piece of big) {
+        const pb: Block = { kind: 'paragraph', text: piece }
+        const p = blockPoints(pb)
+        if (pts + p > MAX_POINTS) flush()
+        if (!prefixUsed && firstSlidePrefix) {
+          acc.push({ kind: 'paragraph', text: firstSlidePrefix + '\n\n' + pb.text })
+          prefixUsed = true
+        } else {
+          acc.push(pb)
+        }
+        pts += p
+      }
+      continue
+    }
+    const p = blockPoints(b)
+    if (pts + p > MAX_POINTS) flush()
+    if (!prefixUsed && firstSlidePrefix) {
+      acc.push({ kind: b.kind, level: b.level, text: firstSlidePrefix + '\n\n' + b.text })
+      prefixUsed = true
+    } else {
+      acc.push(b)
+    }
+    pts += p
+  }
+  flush()
+  return slides
+}
+
+function paginateAdvanced(md: string): string[][] {
+  const blocks = tokenizeBlocks(md)
+  const stacks: string[][] = []
+  let currentStack: string[] = []
+  const flushStack = () => { if (currentStack.length) { stacks.push(currentStack); currentStack = [] } }
+  let j = 0
+  while (j < blocks.length) {
+    const b = blocks[j]
+    if (b.kind === 'toc') {
+      currentStack.push('::PM_TOC_OVERVIEW::')
+      j++
+      continue
+    }
+    if (b.kind === 'heading' && (b.level || 1) === 1) {
+      flushStack()
+      currentStack.push(b.text)
+      j++
+      const seg: Block[] = []
+      while (j < blocks.length) {
+        const nb = blocks[j]
+        if (nb.kind === 'toc') {
+          if (seg.length) {
+            const slides = packBlocksIntoSlides(seg, null)
+            currentStack.push(...slides)
+            seg.length = 0
+          }
+          currentStack.push('::PM_TOC_OVERVIEW::')
+          j++
+          continue
+        }
+        if (nb.kind === 'heading' && (nb.level || 1) === 1) break
+        if (nb.kind === 'heading' && (nb.level || 1) === 2) {
+          if (seg.length) {
+            const slides = packBlocksIntoSlides(seg, null)
+            currentStack.push(...slides)
+            seg.length = 0
+          }
+          currentStack.push(nb.text)
+          j++
+          const afterH2: Block[] = []
+          while (j < blocks.length) {
+            const tb = blocks[j]
+            if (tb.kind === 'heading' && (tb.level || 1) <= 2) break
+            if (tb.kind === 'toc') {
+              // Flush anything accumulated before TOC inside H2 segment
+              if (afterH2.length) {
+                // Process inner H3 segmentation within H2 segment before TOC
+                let k = 0
+                let pending: Block[] = []
+                const flushPending = () => {
+                  if (pending.length) {
+                    const slides = packBlocksIntoSlides(pending, null)
+                    currentStack.push(...slides)
+                    pending = []
+                  }
+                }
+                while (k < afterH2.length) {
+                  const ib = afterH2[k]
+                  if (ib.kind === 'heading' && (ib.level || 1) >= 3 && (ib.level || 1) <= 6) {
+                    flushPending()
+                    const level = ib.level || 3
+                    const prefix = ib.text
+                    k++
+                    const after: Block[] = []
+                    while (k < afterH2.length) {
+                      const xb = afterH2[k]
+                      if (xb.kind === 'heading' && (xb.level || 1) <= level) break
+                      after.push(xb)
+                      k++
+                    }
+                    const slides = packBlocksIntoSlides(after, prefix)
+                    if (!slides.length) currentStack.push(prefix)
+                    else currentStack.push(...slides)
+                    continue
+                  }
+                  pending.push(ib)
+                  k++
+                }
+                flushPending()
+                afterH2.length = 0
+              }
+              currentStack.push('::PM_TOC_OVERVIEW::')
+              j++
+              continue
+            }
+            afterH2.push(tb)
+            j++
+          }
+          if (afterH2.length) {
+            // Ensure at most one H3 per page: segment by H3 inside H2
+            let k = 0
+            let pending: Block[] = []
+            const flushPending = () => {
+              if (pending.length) {
+                const slides = packBlocksIntoSlides(pending, null)
+                currentStack.push(...slides)
+                pending = []
+              }
+            }
+            while (k < afterH2.length) {
+              const ib = afterH2[k]
+              if (ib.kind === 'heading' && (ib.level || 1) >= 3 && (ib.level || 1) <= 6) {
+                flushPending()
+                const level = ib.level || 3
+                const prefix = ib.text
+                k++
+                const after: Block[] = []
+                while (k < afterH2.length) {
+                  const xb = afterH2[k]
+                  if (xb.kind === 'heading' && (xb.level || 1) <= level) break
+                  after.push(xb)
+                  k++
+                }
+                const slides = packBlocksIntoSlides(after, prefix)
+                if (!slides.length) currentStack.push(prefix)
+                else currentStack.push(...slides)
+                continue
+              }
+              pending.push(ib)
+              k++
+            }
+            flushPending()
+          }
+          continue
+        }
+        if (nb.kind === 'heading' && (nb.level || 1) >= 3 && (nb.level || 1) <= 6) {
+          if (seg.length) {
+            const slides = packBlocksIntoSlides(seg, null)
+            currentStack.push(...slides)
+            seg.length = 0
+          }
+          const level = nb.level || 3
+          const prefix = nb.text
+          j++
+          const after: Block[] = []
+          while (j < blocks.length) {
+            const tb = blocks[j]
+            if (tb.kind === 'heading' && (tb.level || 1) <= level) break
+            after.push(tb)
+            j++
+          }
+          const slides = packBlocksIntoSlides(after, prefix)
+          if (!slides.length) currentStack.push(prefix)
+          else currentStack.push(...slides)
+          continue
+        }
+        seg.push(nb)
+        j++
+      }
+      if (seg.length) {
+        const slides = packBlocksIntoSlides(seg, null)
+        currentStack.push(...slides)
+      }
+      continue
+    }
+    if (b.kind === 'heading' && (b.level || 1) === 2) {
+      if (!currentStack.length) flushStack()
+      currentStack.push(b.text)
+      j++
+      const inner: Block[] = []
+      while (j < blocks.length) {
+        const tb = blocks[j]
+        if (tb.kind === 'heading' && (tb.level || 1) <= 2) break
+        inner.push(tb)
+        j++
+      }
+      let k = 0
+      let pending: Block[] = []
+      const flushPending = () => {
+        if (pending.length) {
+          const slides = packBlocksIntoSlides(pending, null)
+          currentStack.push(...slides)
+          pending = []
+        }
+      }
+      while (k < inner.length) {
+        const nb = inner[k]
+        if (nb.kind === 'toc') {
+          flushPending()
+          currentStack.push('::PM_TOC_OVERVIEW::')
+          k++
+          continue
+        }
+        if (nb.kind === 'heading' && (nb.level || 1) >= 3 && (nb.level || 1) <= 6) {
+          flushPending()
+          const level = nb.level || 3
+          const prefix = nb.text
+          k++
+          const after: Block[] = []
+          while (k < inner.length) {
+            const tb = inner[k]
+            if (tb.kind === 'heading' && (tb.level || 1) <= level) break
+            after.push(tb)
+            k++
+          }
+          const slides = packBlocksIntoSlides(after, prefix)
+          if (!slides.length) currentStack.push(prefix)
+          else currentStack.push(...slides)
+          continue
+        }
+        pending.push(nb)
+        k++
+      }
+      flushPending()
+      continue
+    }
+    if (b.kind === 'heading' && (b.level || 1) >= 3 && (b.level || 1) <= 6) {
+      const level = b.level || 3
+      const prefix = b.text
+      j++
+      const after: Block[] = []
+      while (j < blocks.length) {
+        const tb = blocks[j]
+        if (tb.kind === 'heading' && (tb.level || 1) <= level) break
+        after.push(tb)
+        j++
+      }
+      const slides = packBlocksIntoSlides(after, prefix)
+      if (!slides.length) currentStack.push(prefix)
+      else currentStack.push(...slides)
+      continue
+    }
+    const run: Block[] = []
+    while (j < blocks.length) {
+      const tb = blocks[j]
+      if (tb.kind === 'heading') break
+      if (tb.kind === 'toc') {
+        if (run.length) {
+          const slides = packBlocksIntoSlides(run, null)
+          currentStack.push(...slides)
+          run.length = 0
+        }
+        currentStack.push('::PM_TOC_OVERVIEW::')
+        j++
+        continue
+      }
+      run.push(tb)
+      j++
+    }
+    if (run.length) {
+      const slides = packBlocksIntoSlides(run, null)
+      currentStack.push(...slides)
+    }
+  }
+  flushStack()
+  return stacks.length ? stacks : [[md]]
+}
+
+export const exportRevealToHTML = async (content: string, title: string = 'Slides'): Promise<string> => {
+  const { config } = useEditorStore.getState()
+  const stacks = (config.slidePagination === 'heading')
+    ? paginateAdvanced(content)
+    : splitMarkdownToSlideStacks(content)
+  const slideSectionsHtml: string[] = []
+  for (const stack of stacks) {
+    if (stack.length <= 1) {
+      const item = stack[0]
+      if (item === '::PM_TOC_OVERVIEW::') {
+        slideSectionsHtml.push(`<section><h2>目录</h2><div class="pm-toc-block"><ul></ul></div></section>`)
+      } else {
+        const html = parseMarkdown(item)
+        slideSectionsHtml.push(`<section>${html}</section>`)
+      }
+    } else {
+      const inner = stack.map(s => s === '::PM_TOC_OVERVIEW::'
+        ? `<section><h2>目录</h2><div class="pm-toc-block"><ul></ul></div></section>`
+        : `<section>${parseMarkdown(s)}</section>`
+      ).join('')
+      slideSectionsHtml.push(`<section>${inner}</section>`)
+    }
+  }
+  const slidesHtmlRaw = slideSectionsHtml.join('\n')
+  const afterDiagrams = await prerenderDiagrams(slidesHtmlRaw)
+  const { html: slidesHtml, cmCss } = await prerenderCodeBlocks(afterDiagrams)
+  const dark = config.theme === 'dark'
+  const themeCss = dark ? 'black' : 'white'
+  const linkColor = dark ? '#93c5fd' : '#0366d6'
+  const blockquoteBorder = dark ? '#374151' : '#dddddd'
+  const blockquoteColor = dark ? '#9ca3af' : '#666666'
+  const inlineCodeBg = dark ? '#111827' : '#f3f4f6'
+  const inlineCodeColor = dark ? '#e5e7eb' : '#111827'
+  const preBg = dark ? '#0b1220' : '#f8f9fa'
+  const preColor = dark ? '#e5e7eb' : '#1f2937'
+  const preBorder = dark ? '#1f2937' : '#e5e7eb'
+  const navMode = config.revealNavigationMode || 'default'
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${title}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/${themeCss}.css" id="theme" />
+  <style>
+    .reveal a { color: ${linkColor}; }
+    .reveal .slides { text-align: left; }
+    .reveal .slides section { padding: 12px 24px; }
+    .reveal .slides section h1 { font-size: 2.0rem; margin: 0 0 .5rem; }
+    .reveal .slides section h2 { font-size: 1.6rem; margin: .25rem 0 .4rem; border-bottom: 1px solid ${dark ? '#1f2937' : '#e5e7eb'}; padding-bottom: .2rem; }
+    .reveal .slides section h3 { font-size: 1.3rem; margin: .25rem 0 .25rem; }
+    .reveal .slides section p { margin: .4rem 0; }
+    .reveal .slides section code { background: ${inlineCodeBg}; color: ${inlineCodeColor}; padding: .12rem .25rem; border-radius: 4px; }
+    .reveal .slides section pre { background: ${preBg}; color: ${preColor}; border: 1px solid ${preBorder}; border-radius: 8px; padding: .8rem; max-height: 70vh; overflow: auto; }
+    .reveal .slides section pre code { background: transparent; color: inherit; padding: 0; }
+    .reveal .slides section blockquote { border-left: 4px solid ${blockquoteBorder}; margin: 0; padding-left: 1rem; color: ${blockquoteColor}; }
+    .reveal .slides section img { max-width: 80%; max-height: 70vh; height: auto; border-radius: 6px; display: block; margin: .6rem auto; object-fit: contain; }
+    .reveal .slides section table { border-collapse: collapse; width: 80%; margin: .8rem auto; }
+    .reveal .slides section th, .reveal .slides section td { border: 1px solid ${dark ? '#374151' : '#dddddd'}; padding: .5rem .6rem; text-align: left; }
+    .reveal .slides section th { background: ${dark ? '#111827' : '#f5f5f5'}; font-weight: 600; }
+    .pm-toc-block ul { list-style: none; padding-left: 0; }
+    .pm-toc-block li { margin: 0.25rem 0; }
+${cmCss}
+  </style>
+  <script>
+    window.MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$','$$'], ['\\[','\\]']] }, svg: { fontCache: 'global' } }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+${slidesHtml}
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      respondToHashChanges: true,
+      jumpToSlide: true,
+      slideNumber: true,
+      controls: true,
+      controlsTutorial: true,
+      progress: true,
+      center: true,
+      transition: 'slide',
+      keyboard: true,
+      navigationMode: '${navMode}',
+      mouseWheel: true,
+      touch: true,
+      focusBodyOnPageVisibilityChange: true
+    });
+
+    function buildHeadingToIndices() {
+      const ids = {};
+      const sections = Array.from(document.querySelectorAll('.reveal .slides > section'));
+      let hIndex = 0;
+      for (const sec of sections) {
+        const verticals = Array.from(sec.querySelectorAll(':scope > section'));
+        if (verticals.length === 0) {
+          const heads = Array.from(sec.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]'));
+          for (const h of heads) ids[h.id] = { h: hIndex, v: 0 };
+        } else {
+          let vIndex = 0;
+          for (const vsec of verticals) {
+            const heads = Array.from(vsec.querySelectorAll('h1[id],h2[id],h3[id],h4[id],h5[id],h6[id]'));
+            for (const h of heads) ids[h.id] = { h: hIndex, v: vIndex };
+            vIndex++;
+          }
+        }
+        hIndex++;
+      }
+      return ids;
+    }
+
+    function fillGlobalToc() {
+      const list = document.querySelector('.pm-toc-block ul');
+      if (!list) return;
+      const heads = Array.from(document.querySelectorAll('.reveal .slides h1[id], .reveal .slides h2[id], .reveal .slides h3[id], .reveal .slides h4[id], .reveal .slides h5[id], .reveal .slides h6[id]'));
+      const items = heads.map(h => {
+        const tag = h.tagName.toLowerCase();
+        const depth = parseInt(tag.replace('h','')) || 1;
+        const title = h.textContent || '';
+        const id = h.getAttribute('id') || '';
+        return '<li data-depth="' + depth + '"><a href="#' + id + '">' + title + '</a></li>';
+      }).join('');
+      list.innerHTML = items;
+    }
+
+    function wireTocLinks() {
+      const ids = buildHeadingToIndices();
+      document.querySelectorAll('.pm-toc-block a[href^="#"]').forEach(a => {
+        const href = a.getAttribute('href') || '';
+        const id = href.slice(1);
+        const pos = ids[id];
+        if (pos) {
+          a.setAttribute('href', '#/' + pos.h + '/' + (pos.v || 0));
+          a.addEventListener('click', (e) => { e.preventDefault(); Reveal.slide(pos.h, pos.v || 0); });
+        }
+      });
+    }
+    fillGlobalToc();
+    wireTocLinks();
+
+    const revealEl = document.querySelector('.reveal');
+    if (revealEl) { revealEl.setAttribute('tabindex', '0'); revealEl.focus(); }
+  </script>
+</body>
+</html>`
+}
+
+export const exportReveal = async (content: string, filename: string = 'slides.html') => {
+  const htmlContent = await exportRevealToHTML(content)
   downloadFile(htmlContent, filename, 'text/html')
 }

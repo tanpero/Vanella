@@ -74,6 +74,34 @@ const nodes = {
     toDOM: () => ['hr'] as const,
     parseDOM: [{ tag: 'hr' }]
   },
+  table: {
+    group: 'block',
+    content: 'table_row+',
+    attrs: { colalign: { default: [] as Array<'left' | 'center' | 'right'> } },
+    tableRole: 'table',
+    toDOM: () => ['table', ['tbody', 0]] as const,
+    parseDOM: [{ tag: 'table' }]
+  },
+  table_row: {
+    content: '(table_cell|table_header)+',
+    tableRole: 'row',
+    toDOM: () => ['tr', 0] as const,
+    parseDOM: [{ tag: 'tr' }]
+  },
+  table_cell: {
+    content: 'block+',
+    attrs: { colspan: { default: 1 }, rowspan: { default: 1 }, colwidth: { default: null } },
+    tableRole: 'cell',
+    toDOM: () => ['td', 0] as const,
+    parseDOM: [{ tag: 'td' }]
+  },
+  table_header: {
+    content: 'block+',
+    attrs: { colspan: { default: 1 }, rowspan: { default: 1 }, colwidth: { default: null } },
+    tableRole: 'header_cell',
+    toDOM: () => ['th', 0] as const,
+    parseDOM: [{ tag: 'th' }]
+  },
   math_block: {
     group: 'block',
     content: 'text*',
