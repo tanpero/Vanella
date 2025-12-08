@@ -1,16 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import type { EditorState } from 'prosemirror-state'
+import { TextSelection } from 'prosemirror-state'
 import { addRowAfter, addRowBefore, addColumnAfter, addColumnBefore, deleteRow, deleteColumn } from 'prosemirror-tables'
 
-function inTable(state: EditorState) {
-  const $pos = state.selection.$from
-  for (let d = $pos.depth; d > 0; d--) {
-    const node = $pos.node(d)
-    if (node.type.name === 'table') return true
-  }
-  return false
-}
+// removed: inTable helper (no longer needed with right-click trigger)
 
 function getTableInfo(state: EditorState) {
   const $pos = state.selection.$from
@@ -39,8 +33,79 @@ export default function TableToolbar() {
 
   useEffect(() => {
     if (!pmView) return
-    const computeAnchor = () => {
-      if (!pmView) return
+    const applyDomAlign = (tableEl: HTMLElement, aligns: Array<'left'|'center'|'right'>) => {
+      const rows = Array.from(tableEl.querySelectorAll('tr'))
+      rows.forEach(row => {
+        const cells = Array.from(row.children).filter(el => {
+          const tag = (el as HTMLElement).tagName
+          return tag === 'TD' || tag === 'TH'
+        }) as HTMLElement[]
+        let col = 0
+        for (const cell of cells) {
+          const csAttr = cell.getAttribute('colspan') || '1'
+          const cs = Math.max(1, parseInt(csAttr, 10) || 1)
+          const a = aligns[col] || 'left'
+          cell.style.textAlign = a
+          col += cs
+        }
+      })
+    }
+
+    const onUpdate = () => {
+      const st = pmView.state
+      const info = getTableInfo(st)
+      if (!info) { if (visible) setVisible(false); return }
+      if (visible) {
+        const aligns = (info.tableNode.attrs?.colalign || []) as Array<'left'|'center'|'right'>
+        const idx = Math.max(0, Math.min(info.colIndex, Math.max(0, aligns.length - 1)))
+        setColAlign((aligns[idx] || 'left') as 'left'|'center'|'right')
+        const tableEl = pmView.nodeDOM(info.tablePos) as HTMLElement | null
+        if (tableEl) applyDomAlign(tableEl, aligns)
+      }
+    }
+    const origDispatch = pmView.dispatch
+    pmView.dispatch = (tr) => { origDispatch.call(pmView, tr); onUpdate() }
+
+    const handleContextMenu = (ev: MouseEvent) => {
+      const target = ev.target as HTMLElement
+      const tableEl = target?.closest('table') as HTMLElement | null
+      if (!tableEl) { setVisible(false); return }
+      ev.preventDefault()
+      const cellEl = target.closest('td,th') as HTMLElement | null
+      if (cellEl) {
+        try {
+          const pos = pmView.posAtDOM(cellEl, 0)
+          const tr = pmView.state.tr.setSelection(TextSelection.create(pmView.state.doc, Math.max(1, pos + 1)))
+          pmView.dispatch(tr)
+        } catch { setVisible(true) }
+      }
+      const vw = window.innerWidth, vh = window.innerHeight
+      const menuH = wrapRef.current?.offsetHeight || 120
+      const menuW = wrapRef.current?.offsetWidth || 260
+      let left = ev.clientX + 4
+      let top = ev.clientY + 4
+      if (top + menuH > vh - 8) top = Math.max(8, vh - menuH - 8)
+      if (left + menuW > vw - 8) left = Math.max(8, vw - menuW - 8)
+      setAnchor({ left, top })
+      setVisible(true)
+      const st = pmView.state
+      const info = getTableInfo(st)
+      if (info) {
+        const aligns = (info.tableNode.attrs?.colalign || []) as Array<'left'|'center'|'right'>
+        const idx = Math.max(0, Math.min(info.colIndex, Math.max(0, aligns.length - 1)))
+        setColAlign((aligns[idx] || 'left') as 'left'|'center'|'right')
+        applyDomAlign(tableEl, aligns)
+      }
+      const closeOnMouseDown = () => setVisible(false)
+      const closeOnEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setVisible(false) }
+      window.addEventListener('mousedown', closeOnMouseDown, { once: true })
+      window.addEventListener('keydown', closeOnEscape, { once: true })
+    }
+    pmView.dom.addEventListener('contextmenu', handleContextMenu)
+
+    const onScroll = () => {
+      // adjust position when visible
+      if (!visible) return
       const st = pmView.state
       const info = getTableInfo(st)
       if (!info) return
@@ -56,32 +121,15 @@ export default function TableToolbar() {
       if (left + menuW > vw - 8) left = Math.max(8, rect.left - menuW - 6)
       setAnchor({ left, top })
     }
-    const onUpdate = () => {
-      const st = pmView.state
-      const show = inTable(st)
-      setVisible(show)
-      if (show) {
-        const info = getTableInfo(st)
-        if (info) {
-          const aligns = (info.tableNode.attrs?.colalign || []) as Array<'left'|'center'|'right'>
-          const idx = Math.max(0, Math.min(info.colIndex, Math.max(0, aligns.length - 1)))
-          setColAlign((aligns[idx] || 'left') as 'left'|'center'|'right')
-        }
-        computeAnchor()
-      }
-    }
-    onUpdate()
-    const origDispatch = pmView.dispatch
-    pmView.dispatch = (tr) => { origDispatch.call(pmView, tr); onUpdate() }
-    const onScroll = () => computeAnchor()
     pmView.dom.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onScroll)
-    return () => { 
-      if (pmView) pmView.dispatch = origDispatch 
+    return () => {
+      if (pmView) pmView.dispatch = origDispatch
+      pmView?.dom.removeEventListener('contextmenu', handleContextMenu)
       pmView?.dom.removeEventListener('scroll', onScroll)
       window.removeEventListener('resize', onScroll)
     }
-  }, [pmView])
+  }, [pmView, visible])
 
   if (!pmView || !visible) return null
 
@@ -99,6 +147,26 @@ export default function TableToolbar() {
     const tr = state.tr.setNodeMarkup(info.tablePos, state.schema.nodes.table, { ...info.tableNode.attrs, colalign: nextAligns })
     pmView.dispatch(tr)
     setColAlign(next)
+    try {
+      const tableEl = pmView.nodeDOM(info.tablePos) as HTMLElement | null
+      if (tableEl) {
+        const rows = Array.from(tableEl.querySelectorAll('tr'))
+        rows.forEach(row => {
+          const cells = Array.from(row.children).filter(el => {
+            const tag = (el as HTMLElement).tagName
+            return tag === 'TD' || tag === 'TH'
+          }) as HTMLElement[]
+          let col = 0
+          for (const cell of cells) {
+            const csAttr = cell.getAttribute('colspan') || '1'
+            const cs = Math.max(1, parseInt(csAttr, 10) || 1)
+            const a = nextAligns[col] || 'left'
+            cell.style.textAlign = a
+            col += cs
+          }
+        })
+      }
+    } catch { setColAlign(next) }
   }
 
 

@@ -10,7 +10,8 @@ function findInlineRanges(text: string) {
       if (text[i + 1] === '$') { i += 2; continue } // skip block fence
       let j = i + 1
       while (j < text.length && text[j] !== '$') j++
-      if (text[j + 1] === '$') { i = j + 2; continue } // closing is "$$" → treat as fence
+      if (j >= text.length) { i = j; continue }
+      if (j + 1 < text.length && text[j + 1] === '$') { i = j + 2; continue }
       if (j < text.length) {
         const raw = text.slice(i + 1, j)
         ranges.push({ from: i, to: j + 1, raw })
@@ -20,7 +21,8 @@ function findInlineRanges(text: string) {
     }
     if (text[i] === '\\' && text[i + 1] === '(') {
       let j = i + 2
-      while (j < text.length && !(text[j] === '\\' && text[j + 1] === ')')) j++
+      while (j + 1 < text.length && !(text[j] === '\\' && text[j + 1] === ')')) j++
+      if (j + 1 >= text.length) { i = j; continue }
       if (j < text.length) {
         const raw = text.slice(i + 2, j)
         ranges.push({ from: i, to: j + 2, raw })
@@ -39,6 +41,7 @@ export function buildMathInlineDecorations(state: EditorState): Decoration[] {
   state.doc.descendants((node, pos) => {
     if (!node.isTextblock) return
     const text = node.textContent || ''
+    if (text.indexOf('$$') !== -1) return
     const ranges = findInlineRanges(text)
     for (const r of ranges) {
       const from = pos + 1 + r.from
@@ -46,14 +49,6 @@ export function buildMathInlineDecorations(state: EditorState): Decoration[] {
       const inSel = sel.from >= from && sel.from <= to
       if (!inSel) {
         decos.push(Decoration.inline(from, to, { class: 'pm-marker-hidden' }))
-        const widget = Decoration.widget(from, () => {
-          const el = document.createElement('span')
-          el.className = 'pm-math-inline'
-          const node = renderInline(r.raw)
-          el.appendChild(node)
-          return el
-        })
-        decos.push(widget)
       } else {
         const preview = Decoration.widget(to, () => {
           const box = document.createElement('div')

@@ -24,6 +24,8 @@ interface EditorStore {
   setMarkdownSource: (content: string) => void
   pmView: EditorView | null
   setPmView: (view: EditorView | null) => void
+  autofocusMathPos: number | null
+  setAutofocusMathPos: (pos: number | null) => void
   runClassicCommand: (cmd: string, payload?: { level?: number; href?: string; src?: string; alt?: string; language?: string }) => void
   
   // File operations
@@ -154,6 +156,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   }),
   pmView: null,
   setPmView: (view) => set({ pmView: view }),
+  autofocusMathPos: null,
+  setAutofocusMathPos: (pos: number | null) => set({ autofocusMathPos: pos }),
   runClassicCommand: (cmd, payload) => {
     const { pmView, editorMode } = useEditorStore.getState()
     if (!pmView || editorMode !== 'classic') return

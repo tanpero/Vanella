@@ -156,7 +156,7 @@ function markerDecorations(state: EditorState): DecorationSet {
 export default function ClassicEditor() {
   const mountRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
-  const { activeFile, updateFileContent, config, markdownSource, setPmView, showContextMenu } = useEditorStore()
+  const { activeFile, updateFileContent, config, markdownSource, setPmView, showContextMenu, setAutofocusMathPos } = useEditorStore()
   const isDark = config.theme === 'dark'
   const captionCentered = !!config.imageCaptionBelowCentered
 
@@ -283,8 +283,19 @@ export default function ClassicEditor() {
               }
               const mMath = /^\$\$\s*$/.exec(txt)
               if (mMath) {
-                const start = state.selection.$from.start()
-                const end = state.selection.$from.end()
+                const start = state.selection.$from.before()
+                const end = state.selection.$from.after()
+                setAutofocusMathPos(start)
+                let tr = state.tr.replaceRangeWith(start, end, schema.nodes.math_block.create())
+                tr = tr.setSelection(TextSelection.create(tr.doc, start + 1))
+                if (dispatch) dispatch(tr)
+                return true
+              }
+              const mDisplay = /^\\\[\s*$/.exec(txt)
+              if (mDisplay) {
+                const start = state.selection.$from.before()
+                const end = state.selection.$from.after()
+                setAutofocusMathPos(start)
                 let tr = state.tr.replaceRangeWith(start, end, schema.nodes.math_block.create())
                 tr = tr.setSelection(TextSelection.create(tr.doc, start + 1))
                 if (dispatch) dispatch(tr)
@@ -419,11 +430,6 @@ export default function ClassicEditor() {
               }),
               new InputRule(/^---$/, (state, match, start, end) => {
                 const tr = state.tr.replaceRangeWith(start, end, schema.nodes.horizontal_rule.create())
-                return tr
-              }),
-              new InputRule(/^\$\$\s$/, (state, match, start, end) => {
-                let tr = state.tr.replaceRangeWith(start, end, schema.nodes.math_block.create())
-                tr = tr.setSelection(TextSelection.create(tr.doc, start + 1))
                 return tr
               })
             ]
@@ -579,6 +585,7 @@ export default function ClassicEditor() {
         ]
       })
       if (disposed) return
+      const convertRef = { timer: 0 as number | undefined, doc: null as PMNode | null }
       const view = new EditorView(mountRef.current, {
         state,
         nodeViews: {
@@ -593,10 +600,23 @@ export default function ClassicEditor() {
         dispatchTransaction: tr => {
           const newState = view.state.apply(tr)
           view.updateState(newState)
-          ;(async () => {
-            const md = await pmDocToMarkdown(newState.doc as PMNode)
-            updateFileContent(md)
-          })()
+          convertRef.doc = newState.doc as PMNode
+          const { autofocusMathPos } = useEditorStore.getState() as unknown as { autofocusMathPos: number | null }
+          if (autofocusMathPos !== null) {
+            TOC_VIEWS.forEach(v => v.render())
+            return
+          }
+          if (convertRef.timer) clearTimeout(convertRef.timer)
+          convertRef.timer = window.setTimeout(() => {
+            const d = convertRef.doc
+            if (d) {
+              ;(async () => {
+                const md = await pmDocToMarkdown(d as PMNode)
+                updateFileContent(md)
+              })()
+            }
+            convertRef.timer = undefined
+          }, 60)
           TOC_VIEWS.forEach(v => v.render())
         }
       })
@@ -669,6 +689,7 @@ export default function ClassicEditor() {
     const mount = mountRef.current
     if (!mount) return
     const newState = EditorState.create({ doc: currentDoc as PMNode, schema, plugins })
+    const convertRef = { timer: 0 as number | undefined, doc: null as PMNode | null }
     const newView = new EditorView(mount, {
       state: newState,
       nodeViews: {
@@ -683,10 +704,23 @@ export default function ClassicEditor() {
       dispatchTransaction: tr => {
         const ns = newView.state.apply(tr)
         newView.updateState(ns)
-        ;(async () => {
-          const md = await pmDocToMarkdown(ns.doc as PMNode)
-          updateFileContent(md)
-        })()
+        convertRef.doc = ns.doc as PMNode
+        const { autofocusMathPos } = useEditorStore.getState() as unknown as { autofocusMathPos: number | null }
+        if (autofocusMathPos !== null) {
+          TOC_VIEWS.forEach(v => v.render())
+          return
+        }
+        if (convertRef.timer) clearTimeout(convertRef.timer)
+        convertRef.timer = window.setTimeout(() => {
+          const d = convertRef.doc
+          if (d) {
+            ;(async () => {
+              const md = await pmDocToMarkdown(d as PMNode)
+              updateFileContent(md)
+            })()
+          }
+          convertRef.timer = undefined
+        }, 60)
         TOC_VIEWS.forEach(v => v.render())
       }
     })
@@ -703,7 +737,8 @@ export default function ClassicEditor() {
     const plugins = view.state.plugins
     const mount = mountRef.current
     if (!mount) return
-    const newState = EditorState.create({ doc: currentDoc as PMNode, schema, plugins })
+  const newState = EditorState.create({ doc: currentDoc as PMNode, schema, plugins })
+    const convertRef = { timer: 0 as number | undefined, doc: null as PMNode | null }
     const newView = new EditorView(mount, {
       state: newState,
       nodeViews: {
@@ -718,10 +753,23 @@ export default function ClassicEditor() {
       dispatchTransaction: tr => {
         const ns = newView.state.apply(tr)
         newView.updateState(ns)
-        ;(async () => {
-          const md = await pmDocToMarkdown(ns.doc as PMNode)
-          updateFileContent(md)
-        })()
+        convertRef.doc = ns.doc as PMNode
+        const { autofocusMathPos } = useEditorStore.getState() as unknown as { autofocusMathPos: number | null }
+        if (autofocusMathPos !== null) {
+          TOC_VIEWS.forEach(v => v.render())
+          return
+        }
+        if (convertRef.timer) clearTimeout(convertRef.timer)
+        convertRef.timer = window.setTimeout(() => {
+          const d = convertRef.doc
+          if (d) {
+            ;(async () => {
+              const md = await pmDocToMarkdown(d as PMNode)
+              updateFileContent(md)
+            })()
+          }
+          convertRef.timer = undefined
+        }, 60)
         TOC_VIEWS.forEach(v => v.render())
       }
     })
@@ -753,7 +801,15 @@ export default function ClassicEditor() {
         padding: '16px',
         boxSizing: 'border-box'
       }}
-      onContextMenu={(e) => { e.preventDefault(); showContextMenu(e.clientX, e.clientY) }}
+      onContextMenu={(e) => {
+        const target = e.target as HTMLElement
+        const inTbl = !!target.closest('table')
+        e.preventDefault()
+        if (inTbl) {
+          return
+        }
+        showContextMenu(e.clientX, e.clientY)
+      }}
     />
   )
 }

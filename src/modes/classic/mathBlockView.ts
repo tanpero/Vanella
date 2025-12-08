@@ -91,10 +91,15 @@ export class MathBlockView {
           const from = pos + 1
           const to = pos + this.node.nodeSize - 1
           const text = cm.state.doc.toString()
-          const trPM = this.view.state.tr.replaceWith(from, to, this.view.state.schema.text(text))
+          const trPM = text.length > 0
+            ? this.view.state.tr.replaceWith(from, to, this.view.state.schema.text(text))
+            : this.view.state.tr.deleteRange(from, to)
           this.updating = true
           this.view.dispatch(trPM)
           this.updating = false
+          // keep focus after typing
+          if (this.rowEl) this.rowEl.style.display = 'flex'
+          this.cm?.focus()
           this.renderPreview(text, this.node.attrs?.env)
           this.renderLineNumbers(gutter, text)
         }
@@ -158,7 +163,13 @@ export class MathBlockView {
 
     host.addEventListener('focusin', () => { box.style.display = 'block' })
     host.addEventListener('focusout', () => {
-      setTimeout(() => { box.style.display = 'none'; this.hideEditorIfBlur() }, 150)
+      setTimeout(() => {
+        const active = document.activeElement as HTMLElement | null
+        const keep = !!(active && this.dom.contains(active))
+        if (keep) { box.style.display = 'block'; return }
+        box.style.display = 'none'
+        this.hideEditorIfBlur()
+      }, 150)
     })
 
     // host appended to row above
@@ -169,14 +180,21 @@ export class MathBlockView {
     this.preview = preview
     this.box = box
     this.rowEl = row
-    // initial display based on selection inside
     const inside = this.isSelectionInside()
     if (!inside) {
       row.style.display = 'none'
       preview.style.display = 'block'
+    } else {
+      row.style.display = 'flex'
+      preview.style.display = 'block'
     }
-    // focus editor on create when inside
-    if (inside) setTimeout(() => { this.cm?.focus() }, 0)
+    this.ensureAutofocus()
+    setTimeout(() => {
+      const nowInside = this.isSelectionInside()
+      if (this.rowEl) this.rowEl.style.display = nowInside ? 'flex' : 'none'
+      if (this.preview) this.preview.style.display = nowInside ? 'none' : 'block'
+      this.ensureAutofocus()
+    }, 0)
     this.renderLineNumbers(gutter, node.textContent || '')
     // detect env from pasted/raw content on init
     const initialText = cm.state.doc.toString()
@@ -230,6 +248,7 @@ export class MathBlockView {
       const gutter = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
       if (gutter) this.renderLineNumbers(gutter, text)
     }
+    this.ensureAutofocus()
     // toggle editor visibility based on whether selection is inside
     const inside = this.isSelectionInside()
     const row = this.rowEl
@@ -244,8 +263,17 @@ export class MathBlockView {
   destroy() { this.cm?.destroy() }
 
   private renderPreview(text: string, env?: string) {
-    const raw = env ? `\\begin{${env}} ${text} \\end{${env}}` : text
+    const trimmed = (text || '').trim()
     this.preview.innerHTML = ''
+    if (trimmed.length === 0) {
+      const placeholder = document.createElement('div')
+      placeholder.textContent = '<Empty Math Block>'
+      placeholder.style.opacity = '0.6'
+      this.preview.appendChild(placeholder)
+      this.preview.style.textAlign = 'center'
+      return
+    }
+    const raw = env ? `\\begin{${env}} ${text} \\end{${env}}` : text
     const el = renderBlock(raw)
     this.preview.appendChild(el)
     // center for regular env
@@ -295,14 +323,36 @@ export class MathBlockView {
     if (!cm) return
     const hasFocus = cm.hasFocus
     if (!hasFocus) {
-      if (this.rowEl) this.rowEl.style.display = 'none'
-      if (this.preview) this.preview.style.display = 'block'
+      const currentText = cm.state.doc.toString()
+      this.renderPreview(currentText, this.node.attrs?.env)
+      if (!this.isSelectionInside()) {
+        if (this.rowEl) this.rowEl.style.display = 'none'
+        if (this.preview) this.preview.style.display = 'block'
+      } else {
+        // selection still inside; keep editor visible
+        if (this.rowEl) this.rowEl.style.display = 'flex'
+      }
       this.dom.addEventListener('click', () => {
         if (this.rowEl) this.rowEl.style.display = 'flex'
         if (this.preview) this.preview.style.display = 'block'
         this.cm?.focus()
       }, { once: true })
     }
+  }
+
+  private ensureAutofocus() {
+    const { autofocusMathPos, setAutofocusMathPos } = useEditorStore.getState() as unknown as { autofocusMathPos: number | null; setAutofocusMathPos: (pos: number | null) => void }
+    try {
+      const pos = this.getPos()
+      if (autofocusMathPos === pos) {
+        if (this.rowEl) this.rowEl.style.display = 'flex'
+        const sel = TextSelection.create(this.view.state.doc, Math.max(1, pos + 1))
+        const tr = this.view.state.tr.setSelection(sel)
+        this.view.dispatch(tr)
+        setTimeout(() => { this.cm?.focus() }, 0)
+        setAutofocusMathPos(null)
+      }
+    } catch { void 0 }
   }
 
   private isSelectionInside(): boolean {

@@ -249,6 +249,10 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
           nodes.push({ type: 'inlineMath', value: text.slice(i + 2, j) })
           i = j + 2
           continue
+        } else {
+          nodes.push({ type: 'text', value: '\\(' })
+          i = i + 2
+          continue
         }
       }
       if (text[i] === '$') {
@@ -257,6 +261,10 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
         if (j < text.length) {
           nodes.push({ type: 'inlineMath', value: text.slice(i + 1, j) })
           i = j + 1
+          continue
+        } else {
+          nodes.push({ type: 'text', value: '$' })
+          i = i + 1
           continue
         }
       }
@@ -290,7 +298,7 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
         const children: MdNode[] = []
         for (const seg of segs) {
           if (seg.type === 'text') children.push(applyMarksToTextNode(seg, marks, seg.value || ''))
-          else if (seg.type === 'inlineMath') children.push({ type: 'text', value: `\\(${seg.value || ''}\\)` })
+          else if (seg.type === 'inlineMath') children.push({ type: 'inlineMath', value: seg.value || '' })
           else children.push(seg)
         }
         if (linkMark) {
@@ -413,6 +421,5 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
                     .use(remarkBreaks)
                     .use(remarkMath)
                     .stringify(root as never)
-  const s = String(file).replace(/\\\\\(/g, '\\(').replace(/\\\\\)/g, '\\)')
-  return s
+  return String(file)
 }
