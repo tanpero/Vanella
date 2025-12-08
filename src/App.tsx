@@ -1,10 +1,12 @@
 import { HashRouter as Router, Routes, Route } from "react-router-dom"
 import Home from "@/pages/Home"
 import { useEditorStore } from "@/stores/editorStore"
+import { generateId } from "@/utils/markdown"
+import type { FileState } from "@/types/editor"
 import { useEffect } from "react"
 
 export default function App() {
-  const { config } = useEditorStore()
+  const { config, setActiveFile, addTab } = useEditorStore()
   
   useEffect(() => {
     // Apply theme to the document
@@ -63,6 +65,31 @@ export default function App() {
       overlayObserver?.disconnect()
     }
   }, [])
+  
+  useEffect(() => {
+    const api = (window as unknown as { api?: { onOpenFile?: (cb: (p: string) => void) => void; readFile?: (p: string) => Promise<string> } }).api
+    if (!api) return
+    api.onOpenFile?.(async (filePath: string) => {
+      try {
+        const content = await api.readFile?.(filePath)
+        const name = (filePath.split(/[\\/]/).pop() || filePath)
+        const id = generateId()
+        const file: FileState = {
+          id,
+          path: filePath.replace(/\\/g, '/'),
+          name,
+          content: content || '',
+          originalContent: content || '',
+          isDirty: false,
+          isNewFile: false
+        }
+        setActiveFile(file)
+        addTab({ id, name, path: file.path, isActive: true, isDirty: false })
+      } catch (e) {
+        console.warn('[open-md-file] failed', e)
+      }
+    })
+  }, [setActiveFile, addTab])
   
   return (
     <Router>

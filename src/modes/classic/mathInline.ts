@@ -49,6 +49,14 @@ export function buildMathInlineDecorations(state: EditorState): Decoration[] {
       const inSel = sel.from >= from && sel.from <= to
       if (!inSel) {
         decos.push(Decoration.inline(from, to, { class: 'pm-marker-hidden' }))
+        const widget = Decoration.widget(from, () => {
+          const el = document.createElement('span')
+          el.className = 'pm-math-inline'
+          const node = renderInline(r.raw)
+          el.appendChild(node)
+          return el
+        })
+        decos.push(widget)
       } else {
         const preview = Decoration.widget(to, () => {
           const box = document.createElement('div')

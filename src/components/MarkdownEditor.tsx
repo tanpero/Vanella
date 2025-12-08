@@ -75,7 +75,8 @@ const MarkdownEditor = React.forwardRef<{
       EditorView.theme({
         '&': {
           fontSize: `${config.fontSize}px`,
-          fontFamily: 'Consolas, Monaco, monospace'
+          fontFamily: 'Consolas, Monaco, monospace',
+          background: 'transparent'
         },
         '.cm-content': {
           padding: '16px',
@@ -160,7 +161,10 @@ const MarkdownEditor = React.forwardRef<{
           EditorView.theme({
             '&': {
               fontSize: `${config.fontSize}px`,
-              fontFamily: 'Consolas, Monaco, monospace'
+              fontFamily: 'Consolas, Monaco, monospace',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '0'
             },
             '.cm-content': {
               padding: '16px',
@@ -224,8 +228,9 @@ const MarkdownEditor = React.forwardRef<{
       style={{ 
         height: '100%',
         width: '100%',
-        border: isDarkTheme ? '1px solid #374151' : '1px solid #e5e7eb',
-        borderRadius: '8px',
+        border: 'none',
+        borderRadius: '0',
+        background: 'transparent',
         overflow: 'hidden'
       }}
     />

@@ -1,7 +1,9 @@
 {
-  "name": "app",
+  "name": "vanella",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "写作软件",
+  "author": "Camille",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -10,7 +12,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc -b --noEmit",
-    "electron:build": "cnpm run build && electron-builder --win nsis",
+    "electron:build": "npm run build && electron-builder --win nsis",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -111,17 +113,19 @@
     "vitest": "^1.6.1"
   },
   "build": {
-    "appId": "com.camille.app",
-    "productName": "app",
+    "appId": "com.vanella.app",
+    "productName": "Vanella",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "public"
     },
     "files": [
       "dist/**",
       "electron/**",
-      "native/**",
       "package.json"
     ],
+    "asar": true,
+    "compression": "maximum",
     "asarUnpack": [
       "**/*.node"
     ],
@@ -134,8 +138,24 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
-      "uninstallDisplayName": "app Uninstaller",
+      "uninstallDisplayName": "Vanella Uninstaller",
       "artifactName": "${productName} Setup ${version}.exe"
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "Markdown Document",
+        "description": "Markdown 文档",
+        "role": "Editor",
+        "mimeType": "text/markdown"
+      },
+      {
+        "ext": "markdown",
+        "name": "Markdown Document",
+        "description": "Markdown 文档",
+        "role": "Editor",
+        "mimeType": "text/markdown"
+      }
+    ]
   }
 }

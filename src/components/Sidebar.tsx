@@ -13,6 +13,7 @@ import { FileTreeNode } from '@/types/editor'
 
 interface SidebarProps {
   className?: string
+  width?: number
 }
 
 interface FileTreeItemProps {
@@ -117,7 +118,7 @@ function FileTreeItem({ node, depth, onFileClick, onFolderToggle, isDarkTheme }:
   )
 }
 
-export default function Sidebar({ className = '' }: SidebarProps) {
+export default function Sidebar({ className = '', width = 250 }: SidebarProps) {
   const { fileTree, config, pickDirectory, refreshDirectory, openFileNode } = useEditorStore()
   
   const isDarkTheme = config.theme === 'dark'
@@ -142,7 +143,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
     <div 
       className={`sidebar ${className}`}
       style={{
-        width: '250px',
+        width: `${width}px`,
         backgroundColor: isDarkTheme ? '#111827' : '#ffffff',
         borderRight: isDarkTheme ? '1px solid #374151' : '1px solid #e5e7eb',
         display: 'flex',

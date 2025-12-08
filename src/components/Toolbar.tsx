@@ -12,6 +12,7 @@ import {
   Heading3,
   Quote,
   FileText,
+  File,
   Save,
   FolderOpen,
   Settings,
@@ -30,7 +31,6 @@ interface ToolbarProps {
   onSaveFile?: () => void
   onExportMarkdown?: () => void
   onExportHTML?: () => void
-  onExportSlides?: () => void
   onPreviewSlides?: () => void
 }
 
@@ -42,7 +42,6 @@ export default function Toolbar({
   onSaveFile,
   onExportMarkdown,
   onExportHTML,
-  onExportSlides,
   onPreviewSlides
 }: ToolbarProps) {
   const { activeFile, config, toggleSettings, editorMode, setEditorMode, runClassicCommand, pickDirectory, showTableDialog } = useEditorStore()
@@ -164,7 +163,7 @@ export default function Toolbar({
     },
     {
       id: 'open',
-      icon: FolderOpen,
+      icon: File,
       title: 'Open File',
       shortcut: 'Ctrl+O',
       action: onOpenFile
@@ -191,13 +190,6 @@ export default function Toolbar({
       title: 'Export as HTML',
       shortcut: 'Ctrl+Shift+H',
       action: onExportHTML
-    },
-    {
-      id: 'export-slides',
-      icon: Play,
-      title: 'Export Slides (Reveal.js)',
-      shortcut: 'Ctrl+Shift+R',
-      action: onExportSlides
     },
     {
       id: 'preview-slides',

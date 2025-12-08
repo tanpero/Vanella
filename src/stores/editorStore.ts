@@ -527,13 +527,14 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }))
   },
   
-  saveFile: () => {
+  saveFile: async () => {
     const { activeFile } = useEditorStore.getState()
     if (!activeFile) return
-    
-    // This would integrate with Electron IPC for actual file saving
-    console.log('Save file:', activeFile.name)
-    
+    const api = (window as unknown as { api?: { saveFile?: (p: string, c: string) => Promise<boolean> } }).api
+    const targetPath = activeFile.path
+    if (api && api.saveFile && targetPath) {
+      try { await api.saveFile(targetPath, activeFile.content) } catch (e) { console.warn('save-file failed', e) }
+    }
     set((state) => ({
       activeFile: activeFile ? {
         ...activeFile,

@@ -31,6 +31,7 @@ export class AbcBlockView {
     const row = document.createElement('div')
     row.style.display = 'flex'
     row.style.alignItems = 'stretch'
+    row.className = 'pm-block-editor-row'
 
     const gutter = document.createElement('div')
     gutter.className = 'pm-code-gutter'
@@ -101,7 +102,7 @@ export class AbcBlockView {
     wrapper.appendChild(row)
 
     const preview = document.createElement('div')
-    preview.className = 'pm-abc-block-preview'
+    preview.className = 'pm-abc-block-preview pm-block-preview'
     preview.style.padding = '8px'
     preview.style.minHeight = '32px'
     preview.style.overflow = 'auto'
@@ -116,24 +117,30 @@ export class AbcBlockView {
 
     row.style.display = 'flex'
     const initialSrc = cm.state.doc.toString().trim()
-    preview.style.display = initialSrc.length ? 'block' : 'none'
+    if (initialSrc.length) {
+      preview.style.display = 'block'
+      preview.classList.remove('pm-block-preview-hidden')
+    } else {
+      preview.style.display = 'none'
+      preview.classList.add('pm-block-preview-hidden')
+    }
     if (this.isSelectionInside()) setTimeout(() => { this.cm?.focus() }, 0)
 
     this.renderScore(cm.state.doc.toString())
     this.renderLineNumbers(gutter, node.textContent || '')
 
     host.addEventListener('focusin', () => {
-      if (this.rowEl) this.rowEl.style.display = 'flex'
+      if (this.rowEl) this.fadeInRow()
       const cur = this.cm?.state.doc.toString().trim() || ''
-      this.preview.style.display = cur.length ? 'block' : 'none'
+      if (cur.length) this.fadeInPreview(); else this.fadeOutPreview()
     })
     host.addEventListener('focusout', () => {
       setTimeout(() => {
         const focused = !!this.cm?.hasFocus
         if (!focused) {
           const cur = this.cm?.state.doc.toString().trim() || ''
-          if (this.rowEl) this.rowEl.style.display = cur.length ? 'none' : 'flex'
-          this.preview.style.display = cur.length ? 'block' : 'none'
+          if (this.rowEl) { if (cur.length) this.fadeOutRow(); else this.fadeInRow() }
+          if (cur.length) this.fadeInPreview(); else this.fadeOutPreview()
         }
       }, 120)
     })
@@ -142,9 +149,9 @@ export class AbcBlockView {
       const end = pos + this.node.nodeSize
       const tr = this.view.state.tr.setSelection(TextSelection.create(this.view.state.doc, end - 1))
       this.view.dispatch(tr)
-      if (this.rowEl) this.rowEl.style.display = 'flex'
+      if (this.rowEl) this.fadeInRow()
       const cur = this.cm?.state.doc.toString().trim() || ''
-      this.preview.style.display = cur.length ? 'block' : 'none'
+      if (cur.length) this.fadeInPreview(); else this.fadeOutPreview()
       this.cm?.focus()
     })
   }
@@ -162,8 +169,8 @@ export class AbcBlockView {
     const hasSrc = (text.trim().length > 0)
     const inside = this.isSelectionInside()
     const row = this.rowEl
-    if (row) row.style.display = (!hasSrc || inside) ? 'flex' : 'none'
-    this.preview.style.display = hasSrc ? 'block' : 'none'
+    if (row) { if (!hasSrc || inside) this.fadeInRow(); else this.fadeOutRow() }
+    if (hasSrc) this.fadeInPreview(); else this.fadeOutPreview()
     return true
   }
 
@@ -184,13 +191,41 @@ export class AbcBlockView {
     } catch { return false }
   }
 
+  private fadeInRow() {
+    const el = this.rowEl
+    if (!el) return
+    el.style.display = 'flex'
+    el.classList.remove('pm-block-editor-row-hidden')
+  }
+
+  private fadeOutRow() {
+    const el = this.rowEl
+    if (!el) return
+    el.classList.add('pm-block-editor-row-hidden')
+    setTimeout(() => { if (this.rowEl) this.rowEl.style.display = 'none' }, 180)
+  }
+
+  private fadeInPreview() {
+    const el = this.preview
+    if (!el) return
+    el.style.display = 'block'
+    el.classList.remove('pm-block-preview-hidden')
+  }
+
+  private fadeOutPreview() {
+    const el = this.preview
+    if (!el) return
+    el.classList.add('pm-block-preview-hidden')
+    setTimeout(() => { if (this.preview) this.preview.style.display = 'none' }, 180)
+  }
+
   private renderScore(code: string) {
     try {
       this.preview.innerHTML = ''
       const paper = document.createElement('div')
       paper.style.display = 'inline-block'
       paper.style.margin = '0 auto'
-      paper.style.scale = '0.8'
+      paper.style.scale = '0.7'
       this.preview.appendChild(paper)
       ABCJS.renderAbc(paper, code, { responsive: 'resize' })
       const isDark = useEditorStore.getState().config.theme === 'dark'

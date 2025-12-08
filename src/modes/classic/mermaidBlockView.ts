@@ -32,6 +32,7 @@ export class MermaidBlockView {
     const row = document.createElement('div')
     row.style.display = 'flex'
     row.style.alignItems = 'stretch'
+    row.className = 'pm-block-editor-row'
 
     const gutter = document.createElement('div')
     gutter.className = 'pm-code-gutter'
@@ -102,7 +103,7 @@ export class MermaidBlockView {
     wrapper.appendChild(row)
 
     const preview = document.createElement('div')
-    preview.className = 'pm-mermaid-block-preview'
+    preview.className = 'pm-mermaid-block-preview pm-block-preview'
     preview.style.padding = '8px'
     preview.style.minHeight = '32px'
     preview.style.overflow = 'auto'
@@ -118,7 +119,13 @@ export class MermaidBlockView {
     // initial visibility: show preview if has content, editor starts focused
     row.style.display = 'flex'
     const initialSrc = cm.state.doc.toString().trim()
-    preview.style.display = initialSrc.length ? 'block' : 'none'
+    if (initialSrc.length) {
+      preview.style.display = 'block'
+      preview.classList.remove('pm-block-preview-hidden')
+    } else {
+      preview.style.display = 'none'
+      preview.classList.add('pm-block-preview-hidden')
+    }
     setTimeout(() => { this.cm?.focus() }, 0)
 
     // initialize mermaid theme
@@ -137,17 +144,17 @@ export class MermaidBlockView {
       .forEach(el => { if (el.parentElement === document.body) el.remove() })
 
     host.addEventListener('focusin', () => {
-      if (this.rowEl) this.rowEl.style.display = 'flex'
+      if (this.rowEl) this.fadeInRow()
       const cur = this.cm?.state.doc.toString().trim() || ''
-      this.preview.style.display = cur.length ? 'block' : 'none'
+      if (cur.length) this.fadeInPreview(); else this.fadeOutPreview()
     })
     host.addEventListener('focusout', () => {
       setTimeout(() => {
         const focused = !!this.cm?.hasFocus
         if (!focused) {
           const cur = this.cm?.state.doc.toString().trim() || ''
-          if (this.rowEl) this.rowEl.style.display = cur.length ? 'none' : 'flex'
-          this.preview.style.display = cur.length ? 'block' : 'none'
+          if (this.rowEl) { if (cur.length) this.fadeOutRow(); else this.fadeInRow() }
+          if (cur.length) this.fadeInPreview(); else this.fadeOutPreview()
         }
       }, 120)
     })
@@ -156,9 +163,9 @@ export class MermaidBlockView {
       const end = pos + this.node.nodeSize
       const tr = this.view.state.tr.setSelection(TextSelection.create(this.view.state.doc, end - 1))
       this.view.dispatch(tr)
-      if (this.rowEl) this.rowEl.style.display = 'flex'
+      if (this.rowEl) this.fadeInRow()
       const cur = this.cm?.state.doc.toString().trim() || ''
-      this.preview.style.display = cur.length ? 'block' : 'none'
+      if (cur.length) this.fadeInPreview(); else this.fadeOutPreview()
       this.cm?.focus()
     })
   }
@@ -177,8 +184,8 @@ export class MermaidBlockView {
     const hasSrc = (text.trim().length > 0)
     const inside = this.isSelectionInside()
     const row = this.rowEl
-    if (row) row.style.display = (!hasSrc || inside) ? 'flex' : 'none'
-    this.preview.style.display = hasSrc ? 'block' : 'none'
+    if (row) { if (!hasSrc || inside) this.fadeInRow(); else this.fadeOutRow() }
+    if (hasSrc) this.fadeInPreview(); else this.fadeOutPreview()
     // update mermaid theme on dark change
     const isDark = useEditorStore.getState().config.theme === 'dark'
     mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' })
@@ -210,7 +217,7 @@ export class MermaidBlockView {
       const src = (code || '').trim()
       if (!src.length) {
         if (this.containerEl) this.containerEl.innerHTML = ''
-        this.preview.style.display = 'none'
+        this.fadeOutPreview()
         return
       }
       await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
@@ -225,7 +232,7 @@ export class MermaidBlockView {
       this.containerEl.innerHTML = ''
       const { svg } = await mermaid.render(id, src)
       this.containerEl.innerHTML = svg
-      this.preview.style.display = 'block'
+      this.fadeInPreview()
       const temp = document.getElementById('d' + id)
       if (temp && temp.parentElement === document.body) temp.remove()
     } catch (e) {
@@ -244,7 +251,7 @@ export class MermaidBlockView {
           this.containerEl = c
         }
         this.containerEl.innerHTML = svg
-        this.preview.style.display = 'block'
+        this.fadeInPreview()
         const temp = document.getElementById('d' + id)
         if (temp && temp.parentElement === document.body) temp.remove()
         return
@@ -302,5 +309,32 @@ export class MermaidBlockView {
       frag.appendChild(span)
     }
     gutter.appendChild(frag)
+  }
+  private fadeInRow() {
+    const el = this.rowEl
+    if (!el) return
+    el.style.display = 'flex'
+    el.classList.remove('pm-block-editor-row-hidden')
+  }
+
+  private fadeOutRow() {
+    const el = this.rowEl
+    if (!el) return
+    el.classList.add('pm-block-editor-row-hidden')
+    setTimeout(() => { if (this.rowEl) this.rowEl.style.display = 'none' }, 180)
+  }
+
+  private fadeInPreview() {
+    const el = this.preview
+    if (!el) return
+    el.style.display = 'block'
+    el.classList.remove('pm-block-preview-hidden')
+  }
+
+  private fadeOutPreview() {
+    const el = this.preview
+    if (!el) return
+    el.classList.add('pm-block-preview-hidden')
+    setTimeout(() => { if (this.preview) this.preview.style.display = 'none' }, 180)
   }
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
-import { exportRevealToHTML } from '@/utils/export'
+import { exportRevealToHTML, exportReveal } from '@/utils/export'
 
 type SlidesPreviewProps = {
   visible: boolean
@@ -98,6 +98,12 @@ export default function SlidesPreview({ visible, content, title = 'Slides Previe
             <span style={{ fontWeight: 600, opacity: 0.9 }}>{title}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => exportReveal(content, `${title}.slides.html`)}
+              style={{ padding: '6px 12px', border: 'none', borderRadius: '6px', background: '#3b82f6', color: '#ffffff', cursor: 'pointer' }}
+            >
+              导出
+            </button>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
               <input type="checkbox" checked={autoplay} onChange={(e) => setAutoplay(e.target.checked)} />
               <span>自动播放</span>

@@ -1,7 +1,6 @@
 import type { Node as PMNode } from 'prosemirror-model'
 import type { EditorView as PMEditorView } from 'prosemirror-view'
 import { TextSelection } from 'prosemirror-state'
-import { renderBlock } from '@/latex/mathjax'
 import { EditorState as CMState } from '@codemirror/state'
 import { EditorView as CMView, keymap, drawSelection, dropCursor, highlightActiveLine } from '@codemirror/view'
 import { history, defaultKeymap } from '@codemirror/commands'
@@ -23,6 +22,9 @@ export class MathBlockView {
   updating = false
   radiosEl: HTMLDivElement | null = null
   rowEl: HTMLDivElement | null = null
+  previewTick = 0
+  previewTimer: number | undefined
+  previewLastRaw: string | undefined
 
   constructor(node: PMNode, view: PMEditorView, getPos: () => number) {
     this.node = node
@@ -36,6 +38,7 @@ export class MathBlockView {
     const row = document.createElement('div')
     row.style.display = 'flex'
     row.style.alignItems = 'stretch'
+    row.className = 'pm-block-editor-row'
     const gutter = document.createElement('div')
     gutter.className = 'pm-code-gutter'
     gutter.style.width = '36px'
@@ -91,16 +94,19 @@ export class MathBlockView {
           const from = pos + 1
           const to = pos + this.node.nodeSize - 1
           const text = cm.state.doc.toString()
-          const trPM = text.length > 0
+          let trPM = text.length > 0
             ? this.view.state.tr.replaceWith(from, to, this.view.state.schema.text(text))
             : this.view.state.tr.deleteRange(from, to)
+          try {
+            const sel = TextSelection.create(trPM.doc || this.view.state.doc, Math.max(1, pos + 1))
+            trPM = trPM.setSelection(sel)
+          } catch { void 0 }
           this.updating = true
           this.view.dispatch(trPM)
           this.updating = false
-          // keep focus after typing
-          if (this.rowEl) this.rowEl.style.display = 'flex'
+          if (this.rowEl) this.fadeInRow()
           this.cm?.focus()
-          this.renderPreview(text, this.node.attrs?.env)
+          this.schedulePreview(text, this.node.attrs?.env, 120)
           this.renderLineNumbers(gutter, text)
         }
       }
@@ -110,7 +116,7 @@ export class MathBlockView {
     row.appendChild(host)
     wrapper.appendChild(row)
     const preview = document.createElement('div')
-    preview.className = 'pm-math-block-preview'
+    preview.className = 'pm-math-block-preview pm-block-preview'
     preview.style.padding = '8px'
     preview.style.minHeight = '32px'
     preview.style.overflow = 'auto'
@@ -150,7 +156,9 @@ export class MathBlockView {
         if (this.cm) {
           this.cm.dispatch({ changes: { from: 0, to: this.cm.state.doc.length, insert: body } })
         }
-        this.renderPreview(body, env)
+        this.schedulePreview(body, env, 30)
+        if (this.rowEl) this.fadeInRow()
+        this.cm?.focus()
       })
       label.appendChild(radio)
       const span = document.createElement('span')
@@ -183,16 +191,24 @@ export class MathBlockView {
     const inside = this.isSelectionInside()
     if (!inside) {
       row.style.display = 'none'
+      row.classList.add('pm-block-editor-row-hidden')
       preview.style.display = 'block'
+      preview.classList.remove('pm-block-preview-hidden')
     } else {
       row.style.display = 'flex'
+      row.classList.remove('pm-block-editor-row-hidden')
       preview.style.display = 'block'
+      preview.classList.remove('pm-block-preview-hidden')
     }
     this.ensureAutofocus()
     setTimeout(() => {
       const nowInside = this.isSelectionInside()
-      if (this.rowEl) this.rowEl.style.display = nowInside ? 'flex' : 'none'
-      if (this.preview) this.preview.style.display = nowInside ? 'none' : 'block'
+      if (this.rowEl) {
+        if (nowInside) this.fadeInRow(); else this.fadeOutRow()
+      }
+      if (this.preview) {
+        this.fadeInPreview()
+      }
       this.ensureAutofocus()
     }, 0)
     this.renderLineNumbers(gutter, node.textContent || '')
@@ -208,9 +224,9 @@ export class MathBlockView {
       const tr = this.view.state.tr.setNodeMarkup(pos, null, attrs)
       this.view.dispatch(tr)
       this.setRadio(det.env || '')
-      this.renderPreview(det.body, det.env)
+      this.schedulePreview(det.body, det.env, 1)
     } else {
-      this.renderPreview(initialText, node.attrs?.env)
+      this.schedulePreview(initialText, node.attrs?.env, 1)
     }
 
     // clicking below should create a new empty line at tail
@@ -230,8 +246,7 @@ export class MathBlockView {
       }
       tr = tr.setSelection(TextSelection.create(tr.doc || this.view.state.doc, end + 1))
       this.view.dispatch(tr)
-      // show editor when selection moves into this node
-      if (this.rowEl) this.rowEl.style.display = 'flex'
+      if (this.rowEl) this.fadeInRow()
       this.cm?.focus()
     })
   }
@@ -244,51 +259,79 @@ export class MathBlockView {
       this.cm.dispatch({ changes: { from: 0, to: this.cm.state.doc.length, insert: text } })
       // update preview; also update radio when env attr changes
       this.setRadio(node.attrs?.env || '')
-      this.renderPreview(text, node.attrs?.env)
+      this.schedulePreview(text, node.attrs?.env, 60)
       const gutter = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
       if (gutter) this.renderLineNumbers(gutter, text)
     }
     this.ensureAutofocus()
-    // toggle editor visibility based on whether selection is inside
-    const inside = this.isSelectionInside()
+    const active = document.activeElement as HTMLElement | null
+    const inside = (!!this.cm?.hasFocus) || !!(active && this.dom.contains(active))
     const row = this.rowEl
-    if (row) row.style.display = inside ? 'flex' : 'none'
-    this.preview.style.display = 'block'
+    if (row) { if (inside) this.fadeInRow(); else this.fadeOutRow() }
+    this.fadeInPreview()
     return true
   }
-
-  selectNode() {}
   stopEvent() { return true }
   ignoreMutation() { return true }
   destroy() { this.cm?.destroy() }
 
-  private renderPreview(text: string, env?: string) {
+  private schedulePreview(text: string, env?: string, delay = 0) {
     const trimmed = (text || '').trim()
-    this.preview.innerHTML = ''
-    if (trimmed.length === 0) {
+    const raw = env ? `\\begin{${env}} ${text} \\end{${env}}` : text
+    if (!trimmed) {
+      this.previewLastRaw = ''
+      this.preview.innerHTML = ''
       const placeholder = document.createElement('div')
       placeholder.textContent = '<Empty Math Block>'
       placeholder.style.opacity = '0.6'
       this.preview.appendChild(placeholder)
       this.preview.style.textAlign = 'center'
+      if (this.previewTimer) { clearTimeout(this.previewTimer) }
       return
     }
-    const raw = env ? `\\begin{${env}} ${text} \\end{${env}}` : text
-    const el = renderBlock(raw)
-    this.preview.appendChild(el)
-    // center for regular env
-    if (!env) {
-      this.preview.style.textAlign = 'center'
-      const svg = el.querySelector('svg') as SVGElement | null
-      if (svg) {
-        svg.style.display = 'inline-block'
-        svg.style.margin = '0 auto'
-      } else {
-        el.style.display = 'inline-block'
-        el.style.margin = '0 auto'
+    if (raw === this.previewLastRaw) return
+    this.previewLastRaw = raw
+    const token = ++this.previewTick
+    if (this.previewTimer) { clearTimeout(this.previewTimer) }
+    const run = async () => {
+      if (token !== this.previewTick) return
+      try {
+        const mod = await import('@/latex/mathjax')
+        const el = mod.renderBlock(raw)
+        if (token !== this.previewTick) return
+        const container = document.createElement('div')
+        container.appendChild(el)
+        const scrollTop = this.preview.scrollTop
+        this.preview.innerHTML = ''
+        this.preview.appendChild(container)
+        this.preview.scrollTop = scrollTop
+        if (!env) {
+          this.preview.style.textAlign = 'center'
+          const svg = el.querySelector('svg') as SVGElement | null
+          if (svg) {
+            svg.style.display = 'inline-block'
+            svg.style.margin = '0 auto'
+          } else {
+            el.style.display = 'inline-block'
+            el.style.margin = '0 auto'
+          }
+        } else {
+          this.preview.style.textAlign = ''
+        }
+      } catch (e) {
+        const div = document.createElement('div')
+        div.className = 'pm-math-error'
+        const msg = (e as { message?: string }).message || 'render error'
+        div.textContent = `MathJax: ${msg}`
+        this.preview.innerHTML = ''
+        this.preview.appendChild(div)
       }
+    }
+    if (this.previewTimer) { clearTimeout(this.previewTimer) }
+    if ((window as any).requestIdleCallback && delay >= 100) {
+      this.previewTimer = (window as any).requestIdleCallback(() => { run() })
     } else {
-      this.preview.style.textAlign = ''
+      this.previewTimer = window.setTimeout(() => { run() }, Math.max(0, delay))
     }
   }
 
@@ -324,20 +367,43 @@ export class MathBlockView {
     const hasFocus = cm.hasFocus
     if (!hasFocus) {
       const currentText = cm.state.doc.toString()
-      this.renderPreview(currentText, this.node.attrs?.env)
-      if (!this.isSelectionInside()) {
-        if (this.rowEl) this.rowEl.style.display = 'none'
-        if (this.preview) this.preview.style.display = 'block'
-      } else {
-        // selection still inside; keep editor visible
-        if (this.rowEl) this.rowEl.style.display = 'flex'
-      }
+      this.schedulePreview(currentText, this.node.attrs?.env, 60)
+      if (this.rowEl) this.fadeOutRow()
+      if (this.preview) this.fadeInPreview()
       this.dom.addEventListener('click', () => {
-        if (this.rowEl) this.rowEl.style.display = 'flex'
-        if (this.preview) this.preview.style.display = 'block'
+        if (this.rowEl) this.fadeInRow()
+        if (this.preview) this.fadeInPreview()
         this.cm?.focus()
       }, { once: true })
     }
+  }
+
+  private fadeInRow() {
+    const el = this.rowEl
+    if (!el) return
+    el.style.display = 'flex'
+    el.classList.remove('pm-block-editor-row-hidden')
+  }
+
+  private fadeOutRow() {
+    const el = this.rowEl
+    if (!el) return
+    el.classList.add('pm-block-editor-row-hidden')
+    setTimeout(() => { if (this.rowEl) this.rowEl.style.display = 'none' }, 180)
+  }
+
+  private fadeInPreview() {
+    const el = this.preview
+    if (!el) return
+    el.style.display = 'block'
+    el.classList.remove('pm-block-preview-hidden')
+  }
+
+  private fadeOutPreview() {
+    const el = this.preview
+    if (!el) return
+    el.classList.add('pm-block-preview-hidden')
+    setTimeout(() => { if (this.preview) this.preview.style.display = 'none' }, 180)
   }
 
   private ensureAutofocus() {

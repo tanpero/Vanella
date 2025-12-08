@@ -4,15 +4,16 @@ export type FsResp = { id: string, ok: boolean, result?: any, error?: string }
 
 async function buildTree(dirHandle: any, basePath = ''): Promise<any[]> {
   const nodes: any[] = []
-  // entries() is async iterable on FileSystemDirectoryHandle
-  // include parent for children so main thread can delete easily
   for await (const [name, handle] of (dirHandle as any).entries()) {
     const path = `${basePath}/${name}`
     if (handle.kind === 'directory') {
       const children = await buildTree(handle, path)
       nodes.push({ name, path, type: 'directory', children, isExpanded: false, handle, parent: dirHandle })
     } else {
-      nodes.push({ name, path, type: 'file', handle, parent: dirHandle })
+      const lower = String(name).toLowerCase()
+      if (/\.(md|markdown)$/.test(lower)) {
+        nodes.push({ name, path, type: 'file', handle, parent: dirHandle })
+      }
     }
   }
   nodes.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : (a.type === 'directory' ? -1 : 1)))

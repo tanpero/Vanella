@@ -44,7 +44,7 @@ export default defineConfig({
     ]
   },
   build: {
-    sourcemap: 'hidden',
+    sourcemap: false,
   },
   plugins: [
     react({

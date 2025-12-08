@@ -8,7 +8,10 @@ export async function buildFileTree(dirHandle: FileSystemDirectoryHandle, basePa
       const children = await buildFileTree(handle as FileSystemDirectoryHandle, path)
       nodes.push({ name, path, type: 'directory', children, isExpanded: false, handle })
     } else {
-      nodes.push({ name, path, type: 'file', handle, parent: dirHandle })
+      const lower = name.toLowerCase()
+      if (/\.(md|markdown)$/.test(lower)) {
+        nodes.push({ name, path, type: 'file', handle, parent: dirHandle })
+      }
     }
   }
   nodes.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : (a.type === 'directory' ? -1 : 1)))

@@ -10,7 +10,7 @@ import { useEditorStore } from '@/stores/editorStore'
 import { FileState, EditorTab } from '@/types/editor'
 import { generateId } from '@/utils/markdown'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { exportMarkdown, exportHTML, exportReveal } from '@/utils/export'
+import { exportMarkdown, exportHTML } from '@/utils/export'
 
 export default function Home() {
   const editorRef = useRef<{ insertSyntax: (syntax: string, placeholder?: string) => void }>(null)
@@ -28,6 +28,28 @@ export default function Home() {
   } = useEditorStore()
   
   const isDarkTheme = config.theme === 'dark'
+ const [sidebarWidth, setSidebarWidth] = React.useState<number>(250)
+  const [resizing, setResizing] = React.useState<boolean>(false)
+  const startXRef = React.useRef<number>(0)
+  const startWRef = React.useRef<number>(250)
+
+  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    setResizing(true)
+    startXRef.current = e.clientX
+    startWRef.current = sidebarWidth
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startXRef.current
+      const next = Math.min(500, Math.max(160, startWRef.current + dx))
+      setSidebarWidth(next)
+    }
+    const onUp = () => {
+      setResizing(false)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
   const [slidesPreviewVisible, setSlidesPreviewVisible] = React.useState(false)
   
   // Initialize keyboard shortcuts
@@ -46,7 +68,7 @@ export default function Home() {
         id: generateId(),
         path: '/welcome.md',
         name: 'welcome.md',
-        content: String.raw`# Welcome to Markdown Editor
+        content: String.raw`# Welcome to Vanella
 
 [TOC]
 
@@ -229,11 +251,6 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
     }
   }
 
-  const handleExportSlides = async () => {
-    if (activeFile?.content) {
-      await exportReveal(activeFile.content, activeFile.name.replace('.md', '.slides.html'))
-    }
-  }
   const handlePreviewSlides = async () => {
     if (activeFile?.content) setSlidesPreviewVisible(true)
   }
@@ -256,7 +273,6 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
         onSaveFile={handleSaveFile}
         onExportMarkdown={handleExportMarkdown}
         onExportHTML={handleExportHTML}
-        onExportSlides={handleExportSlides}
         onPreviewSlides={handlePreviewSlides}
       />
       
@@ -269,7 +285,21 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
         }}
       >
         {/* Sidebar */}
-        {sidebarVisible && <Sidebar />}
+        {sidebarVisible && (
+          <>
+            <Sidebar width={sidebarWidth} />
+            <div
+              onMouseDown={handleResizeStart}
+              style={{
+                width: '6px',
+                cursor: 'col-resize',
+                backgroundColor: resizing ? (isDarkTheme ? '#374151' : '#e5e7eb') : 'transparent',
+                borderLeft: isDarkTheme ? '1px solid #374151' : '1px solid #e5e7eb',
+                borderRight: isDarkTheme ? '1px solid #374151' : '1px solid #e5e7eb'
+              }}
+            />
+          </>
+        )}
         
         {/* Editor and Preview */}
         <div 
