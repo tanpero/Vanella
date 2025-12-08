@@ -113,7 +113,7 @@ const MarkdownEditor = React.forwardRef<{
       view.destroy()
       viewRef.current = null
     }
-  }, [isDarkTheme, config.fontSize, markdownSource, handleContentChange, setEditorState])
+  }, [isDarkTheme, config.fontSize])
   
   useEffect(() => {
     if (viewRef.current) {

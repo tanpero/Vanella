@@ -19,7 +19,7 @@ function splitInlineMathText(schema: Schema, value: string): PMNode[] {
       while (j < value.length && !(value[j] === '\\' && value[j + 1] === ')')) j++
       if (j < value.length) {
         const raw = value.slice(i + 2, j)
-        out.push(schema.text(`\\(${raw}\\)`))
+        out.push(schema.text(`$${raw}$`))
         i = j + 2
         continue
       }
@@ -76,12 +76,33 @@ type MdNode = {
 }
 
 export async function markdownToPmDoc(schema: Schema, markdown: string): Promise<PMNode> {
+  function normalizeInlineMath(input: string): string {
+    let out = ''
+    let i = 0
+    while (i < input.length) {
+      if (input[i] === '\\' && input[i + 1] === '(') {
+        let j = i + 2
+        while (j < input.length && !(input[j] === '\\' && input[j + 1] === ')')) j++
+        if (j < input.length) {
+          const raw = input.slice(i + 2, j)
+          out += `$${raw}$`
+          i = j + 2
+          continue
+        }
+      }
+      out += input[i]
+      i++
+    }
+    return out
+  }
+
+  const normalized = normalizeInlineMath(markdown)
   const md = unified()
               .use(remarkParse)
               .use(remarkGfm)
               .use(remarkBreaks)
               .use(remarkMath)
-              .parse(markdown) as unknown as MdNode
+              .parse(normalized) as unknown as MdNode
 
   function pmInline(children: MdNode[]): PMNode[] {
     const out: PMNode[] = []
@@ -90,7 +111,7 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
         const segs = splitInlineMathText(schema, child.value || '')
         out.push(...segs)
       } else if (child.type === 'inlineMath') {
-        const raw = `\\(${child.value || ''}\\)`
+        const raw = `$${child.value || ''}$`
         out.push(schema.text(raw))
       } else if (child.type === 'strong') {
         const mark = schema.marks.strong.create()
@@ -217,23 +238,66 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
 }
 
 export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
+  function splitTextToMdNodes(text: string): MdNode[] {
+    const nodes: MdNode[] = []
+    let i = 0
+    while (i < text.length) {
+      if (text[i] === '\\' && text[i + 1] === '(') {
+        let j = i + 2
+        while (j < text.length && !(text[j] === '\\' && text[j + 1] === ')')) j++
+        if (j < text.length) {
+          nodes.push({ type: 'inlineMath', value: text.slice(i + 2, j) })
+          i = j + 2
+          continue
+        }
+      }
+      if (text[i] === '$') {
+        let j = i + 1
+        while (j < text.length && text[j] !== '$') j++
+        if (j < text.length) {
+          nodes.push({ type: 'inlineMath', value: text.slice(i + 1, j) })
+          i = j + 1
+          continue
+        }
+      }
+      let k = i
+      while (k < text.length && !(text[k] === '\\' && text[k + 1] === '(') && text[k] !== '$') k++
+      const plain = text.slice(i, k)
+      if (plain) nodes.push({ type: 'text', value: plain })
+      i = k
+    }
+    return nodes
+  }
+
+  function applyMarksToTextNode(leaf: MdNode, marks: readonly Mark[], fullText: string): MdNode {
+    let result: MdNode = leaf
+    for (const m of marks || []) {
+      if (m.type.name === 'code') result = { type: 'inlineCode', value: fullText }
+      else if (m.type.name === 'strong') result = { type: 'strong', children: [result] }
+      else if (m.type.name === 'em') result = { type: 'emphasis', children: [result] }
+    }
+    return result
+  }
+
   function mdInlineFromPM(node: PMNode): MdNode[] {
     const out: MdNode[] = []
     for (let i = 0; i < node.childCount; i++) {
       const ch = node.child(i)
       if (ch.isText) {
-        let leaf: MdNode = { type: 'text', value: ch.text || '' }
         const marks = ch.marks || []
-        const hasLink = marks.find(m => m.type.name === 'link')
-        for (const m of marks) {
-          if (m.type.name === 'strong') leaf = { type: 'strong', children: [leaf] }
-          if (m.type.name === 'em') leaf = { type: 'emphasis', children: [leaf] }
-          if (m.type.name === 'code') leaf = { type: 'inlineCode', value: ch.text || '' }
+        const linkMark = marks.find(m => m.type.name === 'link')
+        const segs = splitTextToMdNodes(ch.text || '')
+        const children: MdNode[] = []
+        for (const seg of segs) {
+          if (seg.type === 'text') children.push(applyMarksToTextNode(seg, marks, seg.value || ''))
+          else if (seg.type === 'inlineMath') children.push({ type: 'text', value: `\\(${seg.value || ''}\\)` })
+          else children.push(seg)
         }
-        if (hasLink) {
-          leaf = { type: 'link', url: hasLink.attrs.href || '', title: hasLink.attrs.title || null, children: [leaf] }
+        if (linkMark) {
+          out.push({ type: 'link', url: linkMark.attrs.href || '', title: linkMark.attrs.title || null, children })
+        } else {
+          out.push(...children)
         }
-        out.push(leaf)
       } else if (ch.type.name === 'image') {
         out.push({ type: 'image', url: ch.attrs.src || '', alt: ch.attrs.alt || null, title: ch.attrs.title || null })
       }
@@ -349,5 +413,6 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
                     .use(remarkBreaks)
                     .use(remarkMath)
                     .stringify(root as never)
-  return String(file)
+  const s = String(file).replace(/\\\\\(/g, '\\(').replace(/\\\\\)/g, '\\)')
+  return s
 }
