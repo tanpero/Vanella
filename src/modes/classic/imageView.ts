@@ -1,5 +1,6 @@
 import { EditorView, NodeView } from 'prosemirror-view'
 import { Node as PMNode } from 'prosemirror-model'
+import { useEditorStore } from '@/stores/editorStore'
 
 export class ImageView implements NodeView {
   node: PMNode
@@ -12,12 +13,13 @@ export class ImageView implements NodeView {
   showMarkers: boolean
   captionCentered: boolean
   onDocMouseDown?: (ev: MouseEvent) => void
+  unsub?: () => void
 
-  constructor(node: PMNode, view: EditorView, getPos: () => number, captionCentered: boolean) {
+  constructor(node: PMNode, view: EditorView, getPos: () => number) {
     this.node = node
     this.view = view
     this.getPos = getPos
-    this.captionCentered = !!captionCentered
+    this.captionCentered = !!useEditorStore.getState().config.imageCaptionBelowCentered
     this.showMarkers = false
 
     const wrap = document.createElement('div')
@@ -103,6 +105,14 @@ export class ImageView implements NodeView {
     this.imgEl = img
     this.markersEl = markers
     this.captionEl = caption
+
+    this.unsub = useEditorStore.subscribe((state, prev) => {
+      const v = state.config.imageCaptionBelowCentered
+      const pv = prev.config.imageCaptionBelowCentered
+      if (v === pv) return
+      this.captionCentered = !!v
+      if (this.captionEl) this.captionEl.style.display = this.captionCentered ? 'block' : 'none'
+    })
   }
 
   toggleMarkers(show: boolean) {
@@ -124,6 +134,7 @@ export class ImageView implements NodeView {
 
   destroy() {
     if (this.onDocMouseDown) document.removeEventListener('mousedown', this.onDocMouseDown, true)
+    if (this.unsub) this.unsub()
   }
 
   stopEvent(event: Event) {

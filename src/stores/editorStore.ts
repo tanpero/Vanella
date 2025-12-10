@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { computeSourceMatches, computePmMatches, replaceWith, replaceAllText } from '@/utils/search'
 import { AppConfig, FileState, EditorState, EditorTab, FileTreeNode, LoadingState } from '@/types/editor'
 import { generateId } from '@/utils/markdown'
 import type { EditorView } from 'prosemirror-view'
@@ -592,7 +593,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     if (mode === 'classic') {
       const view = get().pmView
       const anchor = view ? view.state.selection.from : 0
-      const matches = computePmMatches(next, get().regexEnabled, get().caseSensitive, get().wholeWord)
+      const matches = view ? computePmMatches(view, next, get().regexEnabled, get().caseSensitive, get().wholeWord) : []
       const startIdx = matches.findIndex(m => m.from >= anchor)
       const idx = startIdx >= 0 ? startIdx : (matches.length > 0 ? 0 : 0)
       set({ searchQuery: next, searchIndex: idx, searchCount: matches.length })
@@ -611,7 +612,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { searchQuery, caseSensitive, editorMode, wholeWord } = get()
     const regexEnabled = !get().regexEnabled
     if (editorMode === 'classic') {
-      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      const view = get().pmView
+      const matches = view ? computePmMatches(view, searchQuery, regexEnabled, caseSensitive, wholeWord) : []
       set({ regexEnabled, searchIndex: matches.length > 0 ? Math.min(get().searchIndex, matches.length - 1) : 0, searchCount: matches.length })
       if (matches.length > 0) selectPmRange(matches[Math.min(get().searchIndex, matches.length - 1)].from, matches[Math.min(get().searchIndex, matches.length - 1)].to)
     } else {
@@ -624,7 +626,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { searchQuery, regexEnabled, editorMode, wholeWord } = get()
     const caseSensitive = !get().caseSensitive
     if (editorMode === 'classic') {
-      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      const view = get().pmView
+      const matches = view ? computePmMatches(view, searchQuery, regexEnabled, caseSensitive, wholeWord) : []
       set({ caseSensitive, searchIndex: matches.length > 0 ? Math.min(get().searchIndex, matches.length - 1) : 0, searchCount: matches.length })
       if (matches.length > 0) selectPmRange(matches[Math.min(get().searchIndex, matches.length - 1)].from, matches[Math.min(get().searchIndex, matches.length - 1)].to)
     } else {
@@ -637,7 +640,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { searchQuery, regexEnabled, caseSensitive, editorMode } = get()
     const wholeWord = !get().wholeWord
     if (editorMode === 'classic') {
-      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      const view = get().pmView
+      const matches = view ? computePmMatches(view, searchQuery, regexEnabled, caseSensitive, wholeWord) : []
       set({ wholeWord, searchIndex: matches.length > 0 ? Math.min(get().searchIndex, matches.length - 1) : 0, searchCount: matches.length })
       if (matches.length > 0) selectPmRange(matches[Math.min(get().searchIndex, matches.length - 1)].from, matches[Math.min(get().searchIndex, matches.length - 1)].to)
     } else {
@@ -650,7 +654,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { editorMode, searchQuery, regexEnabled, caseSensitive, wholeWord } = get()
     if (!searchQuery) return
     if (editorMode === 'classic') {
-      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      const view = get().pmView
+      const matches = view ? computePmMatches(view, searchQuery, regexEnabled, caseSensitive, wholeWord) : []
       if (matches.length === 0) { set({ searchCount: 0 }); return }
       const idx = (get().searchIndex + 1) % matches.length
       set({ searchIndex: idx, searchCount: matches.length })
@@ -670,7 +675,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { editorMode, searchQuery, regexEnabled, caseSensitive, wholeWord } = get()
     if (!searchQuery) return
     if (editorMode === 'classic') {
-      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      const view = get().pmView
+      const matches = view ? computePmMatches(view, searchQuery, regexEnabled, caseSensitive, wholeWord) : []
       if (matches.length === 0) { set({ searchCount: 0 }); return }
       const idx = (get().searchIndex - 1 + matches.length) % matches.length
       set({ searchIndex: idx, searchCount: matches.length })
@@ -692,14 +698,15 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     if (editorMode === 'classic') {
       const view = get().pmView
       if (!view) return
-      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      const matches = view ? computePmMatches(view, searchQuery, regexEnabled, caseSensitive, wholeWord) : []
       if (matches.length === 0) return
       const idx = Math.min(get().searchIndex, matches.length - 1)
       const m = matches[idx]
       const text = replaceWith(searchQuery, replaceQuery, view.state.doc.textBetween(m.from, m.to), regexEnabled, caseSensitive)
       const tr = view.state.tr.insertText(text, m.from, m.to)
       view.dispatch(tr)
-      const nextMatches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      const view2 = get().pmView
+      const nextMatches = view2 ? computePmMatches(view2, searchQuery, regexEnabled, caseSensitive, wholeWord) : []
       set({ searchIndex: Math.min(idx, Math.max(0, nextMatches.length - 1)), searchCount: nextMatches.length })
     } else {
       const src = get().markdownSource || ''
@@ -729,7 +736,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       const doc = await markdownToPmDoc(view.state.schema as any, next)
       const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content)
       view.dispatch(tr)
-      set({ searchCount: computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord).length })
+      const v = get().pmView
+      set({ searchCount: (v ? computePmMatches(v, searchQuery, regexEnabled, caseSensitive, wholeWord) : []).length })
     } else {
       const src = get().markdownSource || ''
       const next = replaceAllText(src, searchQuery, replaceQuery, regexEnabled, caseSensitive, wholeWord)
@@ -749,55 +757,6 @@ function findDirHandleByPath(tree: FileTreeNode[], path: string): FileSystemDire
     }
   }
   return null
-}
-
-function buildRegex(query: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean): RegExp | null {
-  if (!query) return null
-  try {
-    let source = regexEnabled ? query : escapeReg(query)
-    if (wholeWord) source = `\\b${source}\\b`
-    const flags = 'g' + (caseSensitive ? '' : 'i')
-    return new RegExp(source, flags)
-  } catch { return null }
-}
-
-function escapeReg(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function computeSourceMatches(text: string, query: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean): Array<{ from: number; to: number }> {
-  const re = buildRegex(query, regexEnabled, caseSensitive, wholeWord)
-  if (!re) return []
-  const out: Array<{ from: number; to: number }> = []
-  let m: RegExpExecArray | null
-  while ((m = re.exec(text)) !== null) {
-    out.push({ from: m.index, to: m.index + m[0].length })
-    if (m[0].length === 0) re.lastIndex++
-  }
-  return out
-}
-
-function computePmMatches(query: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean): Array<{ from: number; to: number }> {
-  const view = useEditorStore.getState().pmView
-  if (!view || !query) return []
-  const re = buildRegex(query, regexEnabled, caseSensitive, wholeWord)
-  if (!re) return []
-  const out: Array<{ from: number; to: number }> = []
-  const doc = view.state.doc
-  doc.descendants((node, from) => {
-    if (node.isText && typeof node.text === 'string') {
-      const text = node.text
-      re.lastIndex = 0
-      let m: RegExpExecArray | null
-      while ((m = re.exec(text)) !== null) {
-        const s = from + m.index
-        const e = s + m[0].length
-        out.push({ from: s, to: e })
-        if (m[0].length === 0) re.lastIndex++
-      }
-    }
-  })
-  return out
 }
 
 function selectPmRange(from: number, to: number) {
@@ -825,16 +784,4 @@ function selectSourceRange(from: number, to: number) {
   const editorRefObj = useEditorStore.getState().editorRef
   const fn = editorRefObj?.selectRange
   if (fn) fn(from, to)
-}
-
-function replaceWith(query: string, replaceQuery: string, segment: string, regexEnabled: boolean, caseSensitive: boolean): string {
-  const re = buildRegex(query, regexEnabled, caseSensitive, false)
-  if (!re) return segment
-  return segment.replace(re, replaceQuery)
-}
-
-function replaceAllText(text: string, query: string, replaceQuery: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean): string {
-  const re = buildRegex(query, regexEnabled, caseSensitive, wholeWord)
-  if (!re) return text
-  return text.replace(re, replaceQuery)
 }

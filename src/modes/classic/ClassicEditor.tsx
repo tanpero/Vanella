@@ -24,6 +24,7 @@ import { buildMathInlineDecorations } from '@/modes/classic/mathInline'
 import { AbcBlockView } from './abcBlockView'
 import { TocView, TOC_VIEWS } from './tocView'
 import type { Node as PMNode, NodeType, MarkType } from 'prosemirror-model'
+import { buildRegex } from '@/utils/search'
 
 function markerDecorations(state: EditorState): DecorationSet {
   const decos: Decoration[] = []
@@ -396,11 +397,8 @@ export default function ClassicEditor() {
             decorations: (s: EditorState) => {
               const { searchVisible, searchQuery, regexEnabled, caseSensitive, wholeWord, searchIndex } = useEditorStore.getState() as unknown as { searchVisible: boolean, searchQuery: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean, searchIndex: number }
               if (!searchVisible || !searchQuery) return null
-              let source = regexEnabled ? searchQuery : searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-              if (wholeWord) source = `\\b${source}\\b`
-              const flags = 'g' + (caseSensitive ? '' : 'i')
-              let re: RegExp
-              try { re = new RegExp(source, flags) } catch { return null }
+              const re = buildRegex(searchQuery, regexEnabled, caseSensitive, wholeWord)
+              if (!re) return null
               const decos: Decoration[] = []
               let idx = 0
               s.doc.descendants((node, from) => {
@@ -630,13 +628,13 @@ export default function ClassicEditor() {
       const view = new EditorView(mountRef.current, {
         state,
         nodeViews: {
-          code_block: (node, view, getPos) => new CodeBlockView(node, view, getPos as () => number, isDark),
+          code_block: (node, view, getPos) => new CodeBlockView(node, view, getPos as () => number),
           math_block: (node, view, getPos) => new MathBlockView(node, view, getPos as () => number),
           mermaid_block: (node, view, getPos) => new MermaidBlockView(node, view, getPos as () => number),
           abc_block: (node, view, getPos) => new AbcBlockView(node, view, getPos as () => number),
           toc_block: (node, view, getPos) => new TocView(node, view, getPos as () => number),
           list_item: (node, view, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, view, getPos as () => number) : undefined),
-          image: (node, view, getPos) => new ImageView(node, view, getPos as () => number, captionCentered)
+          image: (node, view, getPos) => new ImageView(node, view, getPos as () => number)
         },
         dispatchTransaction: tr => {
           const newState = view.state.apply(tr)
@@ -721,103 +719,6 @@ export default function ClassicEditor() {
     }
   }, [])
 
-  useEffect(() => {
-    const view = viewRef.current
-    if (!view) return
-    const isDarkNow = config.theme === 'dark'
-    const currentDoc = view.state.doc
-    const plugins = view.state.plugins
-    const mount = mountRef.current
-    if (!mount) return
-    const newState = EditorState.create({ doc: currentDoc as PMNode, schema, plugins })
-    const convertRef = { timer: 0 as number | undefined, doc: null as PMNode | null }
-    const newView = new EditorView(mount, {
-      state: newState,
-      nodeViews: {
-        code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as () => number, isDarkNow),
-        math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as () => number),
-        mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as () => number),
-        abc_block: (node, v, getPos) => new AbcBlockView(node, v, getPos as () => number),
-        toc_block: (node, v, getPos) => new TocView(node, v, getPos as () => number),
-        list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as () => number) : undefined),
-        image: (node, v, getPos) => new ImageView(node, v, getPos as () => number, captionCentered)
-      },
-      dispatchTransaction: tr => {
-        const ns = newView.state.apply(tr)
-        newView.updateState(ns)
-        convertRef.doc = ns.doc as PMNode
-        const { autofocusMathPos } = useEditorStore.getState() as unknown as { autofocusMathPos: number | null }
-        if (autofocusMathPos !== null) {
-          TOC_VIEWS.forEach(v => v.render())
-          return
-        }
-        if (convertRef.timer) clearTimeout(convertRef.timer)
-        convertRef.timer = window.setTimeout(() => {
-          const d = convertRef.doc
-          if (d) {
-            ;(async () => {
-              const md = await pmDocToMarkdown(d as PMNode)
-              updateFileContent(md)
-            })()
-          }
-          convertRef.timer = undefined
-        }, 60)
-        TOC_VIEWS.forEach(v => v.render())
-      }
-    })
-    view.destroy()
-    viewRef.current = newView
-    setPmView(newView)
-  }, [config.theme, captionCentered, setPmView, updateFileContent])
-
-  useEffect(() => {
-    const view = viewRef.current
-    if (!view) return
-    const isDarkNow = config.theme === 'dark'
-    const currentDoc = view.state.doc
-    const plugins = view.state.plugins
-    const mount = mountRef.current
-    if (!mount) return
-  const newState = EditorState.create({ doc: currentDoc as PMNode, schema, plugins })
-    const convertRef = { timer: 0 as number | undefined, doc: null as PMNode | null }
-    const newView = new EditorView(mount, {
-      state: newState,
-      nodeViews: {
-        code_block: (node, v, getPos) => new CodeBlockView(node, v, getPos as () => number, isDarkNow),
-        math_block: (node, v, getPos) => new MathBlockView(node, v, getPos as () => number),
-        mermaid_block: (node, v, getPos) => new MermaidBlockView(node, v, getPos as () => number),
-        abc_block: (node, v, getPos) => new AbcBlockView(node, v, getPos as () => number),
-        toc_block: (node, v, getPos) => new TocView(node, v, getPos as () => number),
-        list_item: (node, v, getPos) => (node.attrs && node.attrs.checked !== null ? new TaskItemView(node, v, getPos as () => number) : undefined),
-        image: (node, v, getPos) => new ImageView(node, v, getPos as () => number, captionCentered)
-      },
-      dispatchTransaction: tr => {
-        const ns = newView.state.apply(tr)
-        newView.updateState(ns)
-        convertRef.doc = ns.doc as PMNode
-        const { autofocusMathPos } = useEditorStore.getState() as unknown as { autofocusMathPos: number | null }
-        if (autofocusMathPos !== null) {
-          TOC_VIEWS.forEach(v => v.render())
-          return
-        }
-        if (convertRef.timer) clearTimeout(convertRef.timer)
-        convertRef.timer = window.setTimeout(() => {
-          const d = convertRef.doc
-          if (d) {
-            ;(async () => {
-              const md = await pmDocToMarkdown(d as PMNode)
-              updateFileContent(md)
-            })()
-          }
-          convertRef.timer = undefined
-        }, 60)
-        TOC_VIEWS.forEach(v => v.render())
-      }
-    })
-    view.destroy()
-    viewRef.current = newView
-    setPmView(newView)
-  }, [config.codeblockThemeLight, config.codeblockThemeDark, config.theme, captionCentered, setPmView, updateFileContent])
 
   useEffect(() => {
     const view = viewRef.current

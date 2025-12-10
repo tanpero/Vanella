@@ -25,6 +25,9 @@ export class MathBlockView {
   previewTick = 0
   previewTimer: number | undefined
   previewLastRaw: string | undefined
+  dark: boolean = false
+  prevThemeKey?: string
+  unsub?: () => void
 
   constructor(node: PMNode, view: PMEditorView, getPos: () => number) {
     this.node = node
@@ -44,6 +47,7 @@ export class MathBlockView {
     gutter.style.width = '36px'
     gutter.style.flex = '0 0 36px'
     const isDark = useEditorStore.getState().config.theme === 'dark'
+    this.dark = isDark
     gutter.style.background = isDark ? '#0b1220' : '#f3f4f6'
     gutter.style.color = isDark ? '#9ca3af' : '#9ca3af'
     gutter.style.padding = '6px 6px 6px 8px'
@@ -64,6 +68,7 @@ export class MathBlockView {
     const { config } = useEditorStore.getState()
     const chosenTheme = isDark ? config.codeblockThemeDark : config.codeblockThemeLight
     const themeExt = mapTheme(chosenTheme, isDark)
+    this.prevThemeKey = chosenTheme
 
     const cmState = CMState.create({
       doc: node.textContent || '',
@@ -249,6 +254,42 @@ export class MathBlockView {
       if (this.rowEl) this.fadeInRow()
       this.cm?.focus()
     })
+
+    this.unsub = useEditorStore.subscribe((state, prev) => {
+      const curDark = state.config.theme === 'dark'
+      const prevDark = prev.config.theme === 'dark'
+      const themeKey = curDark ? state.config.codeblockThemeDark : state.config.codeblockThemeLight
+      const prevKey = prevDark ? prev.config.codeblockThemeDark : prev.config.codeblockThemeLight
+      if (curDark !== prevDark || themeKey !== prevKey) {
+        this.dark = curDark
+        this.prevThemeKey = themeKey
+        const nextTheme = mapTheme(themeKey, curDark)
+        const baseExt = [
+          history(),
+          keymap.of([...defaultKeymap]),
+          drawSelection(),
+          dropCursor(),
+          highlightActiveLine(),
+          bracketMatching(),
+          closeBrackets(),
+          syntaxHighlighting(defaultHighlightStyle),
+          StreamLanguage.define(stex),
+          CMView.theme({
+            '&': { fontFamily: 'Consolas, Monaco, monospace', fontSize: '15px', transition: 'background-color .25s, color .25s, border-color .25s' },
+            '.cm-content': { padding: '8px' }
+          })
+        ]
+        const state2 = CMState.create({ doc: this.cm?.state.doc.toString() || '', extensions: [...baseExt, nextTheme] })
+        if (this.cm) this.cm.setState(state2)
+        const g = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
+        if (g) {
+          g.style.background = this.dark ? '#0b1220' : '#f3f4f6'
+          g.style.color = this.dark ? '#9ca3af' : '#9ca3af'
+        }
+        const curText = this.cm?.state.doc.toString() || ''
+        this.schedulePreview(curText, this.node.attrs?.env, 30)
+      }
+    })
   }
 
   update(node: PMNode) {
@@ -273,7 +314,7 @@ export class MathBlockView {
   }
   stopEvent() { return true }
   ignoreMutation() { return true }
-  destroy() { this.cm?.destroy() }
+  destroy() { if (this.unsub) this.unsub(); this.cm?.destroy() }
 
   private schedulePreview(text: string, env?: string, delay = 0) {
     const trimmed = (text || '').trim()

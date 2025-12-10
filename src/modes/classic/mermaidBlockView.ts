@@ -19,6 +19,9 @@ export class MermaidBlockView {
   rowEl: HTMLDivElement | null = null
   containerEl: HTMLDivElement | null = null
   updating = false
+  dark: boolean = false
+  prevThemeKey?: string
+  unsub?: () => void
 
   constructor(node: PMNode, view: PMEditorView, getPos: () => number) {
     this.node = node
@@ -39,6 +42,7 @@ export class MermaidBlockView {
     gutter.style.width = '36px'
     gutter.style.flex = '0 0 36px'
     const isDark = useEditorStore.getState().config.theme === 'dark'
+    this.dark = isDark
     gutter.style.background = isDark ? '#0b1220' : '#f3f4f6'
     gutter.style.color = isDark ? '#9ca3af' : '#9ca3af'
     gutter.style.padding = '6px 6px 6px 8px'
@@ -60,6 +64,7 @@ export class MermaidBlockView {
     const { config } = useEditorStore.getState()
     const chosenTheme = isDark ? config.codeblockThemeDark : config.codeblockThemeLight
     const themeExt = mapTheme(chosenTheme, isDark)
+    this.prevThemeKey = chosenTheme
 
     const cmState = CMState.create({
       doc: node.textContent || '',
@@ -168,6 +173,41 @@ export class MermaidBlockView {
       if (cur.length) this.fadeInPreview(); else this.fadeOutPreview()
       this.cm?.focus()
     })
+
+    this.unsub = useEditorStore.subscribe((state, prev) => {
+      const curDark = state.config.theme === 'dark'
+      const prevDark = prev.config.theme === 'dark'
+      const themeKey = curDark ? state.config.codeblockThemeDark : state.config.codeblockThemeLight
+      const prevKey = prevDark ? prev.config.codeblockThemeDark : prev.config.codeblockThemeLight
+      if (curDark !== prevDark || themeKey !== prevKey) {
+        this.dark = curDark
+        this.prevThemeKey = themeKey
+        const nextTheme = mapTheme(themeKey, curDark)
+        const baseExt = [
+          history(),
+          keymap.of([...defaultKeymap]),
+          drawSelection(),
+          dropCursor(),
+          highlightActiveLine(),
+          bracketMatching(),
+          syntaxHighlighting(defaultHighlightStyle),
+          CMView.theme({
+            '&': { fontFamily: 'Consolas, Monaco, monospace', fontSize: '15px', transition: 'background-color .25s, color .25s, border-color .25s' },
+            '.cm-content': { padding: '8px' }
+          })
+        ]
+        const state2 = CMState.create({ doc: this.cm?.state.doc.toString() || '', extensions: [...baseExt, nextTheme] })
+        if (this.cm) this.cm.setState(state2)
+        const g = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
+        if (g) {
+          g.style.background = this.dark ? '#0b1220' : '#f3f4f6'
+          g.style.color = this.dark ? '#9ca3af' : '#9ca3af'
+        }
+        mermaid.initialize({ startOnLoad: false, theme: this.dark ? 'dark' : 'default' })
+        const cur = this.cm?.state.doc.toString() || ''
+        this.renderDiagram(cur)
+      }
+    })
   }
 
   update(node: PMNode) {
@@ -195,7 +235,7 @@ export class MermaidBlockView {
   selectNode() {}
   stopEvent() { return true }
   ignoreMutation() { return true }
-  destroy() { this.cm?.destroy() }
+  destroy() { if (this.unsub) this.unsub(); this.cm?.destroy() }
 
   private isSelectionInside(): boolean {
     try {

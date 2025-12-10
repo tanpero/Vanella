@@ -24,17 +24,19 @@ export class CodeBlockView {
   private langInput!: HTMLInputElement
   private langList!: HTMLDivElement
   private langListInBody: boolean = false
+  private unsub?: () => void
 
-  constructor(node: PMNode, view: PMEditorView, getPos: () => number, dark: boolean) {
+  constructor(node: PMNode, view: PMEditorView, getPos: () => number) {
     this.node = node
     this.view = view
     this.getPos = getPos
-    this.dark = dark
+    const isDark = useEditorStore.getState().config.theme === 'dark'
+    this.dark = isDark
     this.prevLang = node.attrs?.language
 
     const wrapper = document.createElement('div')
-    wrapper.className = `pm-codeblock-cm ${dark ? 'dark' : 'light'}`
-    wrapper.style.border = dark ? '1px solid #374151' : '1px solid #e5e7eb'
+    wrapper.className = `pm-codeblock-cm ${isDark ? 'dark' : 'light'}`
+    wrapper.style.border = isDark ? '1px solid #374151' : '1px solid #e5e7eb'
     wrapper.style.borderRadius = '6px'
     wrapper.style.overflow = 'hidden'
     wrapper.style.margin = '8px 0'
@@ -48,8 +50,8 @@ export class CodeBlockView {
     gutter.className = 'pm-code-gutter'
     gutter.style.width = '36px'
     gutter.style.flex = '0 0 36px'
-    gutter.style.background = dark ? '#0b1220' : '#f3f4f6'
-    gutter.style.color = dark ? '#9ca3af' : '#9ca3af'
+    gutter.style.background = isDark ? '#0b1220' : '#f3f4f6'
+    gutter.style.color = isDark ? '#9ca3af' : '#9ca3af'
     gutter.style.padding = '6px 6px 6px 8px'
     gutter.style.boxSizing = 'border-box'
     gutter.style.textAlign = 'right'
@@ -67,8 +69,8 @@ export class CodeBlockView {
 
     const initialDoc = node.textContent || ''
     const { config } = useEditorStore.getState()
-    const chosenTheme = dark ? config.codeblockThemeDark : config.codeblockThemeLight
-    const themeExt = mapTheme(chosenTheme, dark)
+    const chosenTheme = isDark ? config.codeblockThemeDark : config.codeblockThemeLight
+    const themeExt = mapTheme(chosenTheme, isDark)
     this.prevThemeKey = chosenTheme
 
     const langExtCandidate = mapLanguage(node.attrs?.language)
@@ -157,6 +159,55 @@ export class CodeBlockView {
         }
       }
     })
+
+    this.unsub = useEditorStore.subscribe((state, prev) => {
+      const curDark = state.config.theme === 'dark'
+      const themeKey = curDark ? state.config.codeblockThemeDark : state.config.codeblockThemeLight
+      const prevDark = prev.config.theme === 'dark'
+      const prevKey = prevDark ? prev.config.codeblockThemeDark : prev.config.codeblockThemeLight
+      if (curDark !== prevDark || themeKey !== prevKey) {
+        this.dark = curDark
+        this.prevThemeKey = themeKey
+        const langExt = mapLanguage(this.prevLang)
+        const baseExt = [
+          history(),
+          keymap.of([...defaultKeymap, ...historyKeymap]),
+          drawSelection(),
+          dropCursor(),
+          highlightActiveLine(),
+          syntaxHighlighting(defaultHighlightStyle),
+          CMEditorView.theme({
+            '&': { fontSize: '15px' },
+            '.cm-scroller, .cm-content, .cm-line': { fontFamily: 'Consolas, Monaco, monospace' },
+            '.cm-content': { padding: '8px' }
+          })
+        ]
+        const themeExt2 = mapTheme(themeKey, this.dark)
+        const nextExt = [...baseExt, ...(Array.isArray(langExt) ? langExt : [langExt]), themeExt2]
+        const state2 = CMState.create({ doc: this.cm.state.doc.toString(), extensions: nextExt })
+        this.cm.setState(state2)
+        const w = this.dom
+        if (w) {
+          w.className = `pm-codeblock-cm ${this.dark ? 'dark' : 'light'}`
+          w.style.border = this.dark ? '1px solid #374151' : '1px solid #e5e7eb'
+        }
+        const g = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
+        if (g) {
+          g.style.background = this.dark ? '#0b1220' : '#f3f4f6'
+          g.style.color = this.dark ? '#9ca3af' : '#9ca3af'
+        }
+        if (this.langInput) {
+          this.langInput.style.border = this.dark ? '1px solid #374151' : '1px solid #d1d5db'
+          this.langInput.style.background = this.dark ? '#0b1220' : '#ffffff'
+          this.langInput.style.color = this.dark ? '#e5e7eb' : '#111827'
+        }
+        if (this.langList) {
+          this.langList.style.border = this.dark ? '1px solid #374151' : '1px solid #d1d5db'
+          this.langList.style.background = this.dark ? '#0b1220' : '#ffffff'
+          this.langList.style.boxShadow = this.dark ? '0 6px 16px rgba(0,0,0,.35)' : '0 6px 16px rgba(0,0,0,.15)'
+        }
+      }
+    })
   }
 
   update(node: PMNode) {
@@ -227,7 +278,7 @@ export class CodeBlockView {
   selectNode() {}
   stopEvent() { return true }
   ignoreMutation() { return true }
-  destroy() { this.cm.destroy() }
+  destroy() { if (this.unsub) this.unsub(); this.cm.destroy() }
 
   private renderLineNumbers(gutter: HTMLDivElement, text: string) {
     const lines = text.split('\n').length
