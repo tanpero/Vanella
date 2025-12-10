@@ -416,7 +416,7 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
   doc.forEach(child => { const m = mdBlockFromPM(child); if (m) mdChildren.push(m) })
   const root: { type: 'root'; children?: MdNode[] } = { type: 'root', children: mdChildren }
   const file = await unified()
-                    .use(remarkStringify, { fences: true, listItemIndent: 'one' })
+                    .use(remarkStringify, { fences: true, listItemIndent: 'one', rule: '-', ruleRepetition: 3, ruleSpaces: false })
                     .use(remarkGfm)
                     .use(remarkBreaks)
                     .use(remarkMath)

@@ -23,11 +23,17 @@ function hashSha256(input: string): string {
   return h.digest('hex')
 }
 
+function resolveIcon(): string {
+  const isDev = process.env.ELECTRON_DEV === 'true' || Boolean(process.env.VITE_DEV_SERVER_URL)
+  if (isDev) return path.join(process.cwd(), 'public', 'favicon.ico')
+  return path.join(process.resourcesPath, 'public', 'favicon.ico')
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1000,
     height: 700,
-    icon: path.join(process.resourcesPath, 'public', 'favicon.ico'),
+    icon: resolveIcon(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true

@@ -1,4 +1,11 @@
 import { parseMarkdown } from './markdown'
+import { unified } from 'unified'
+import remarkParse from 'remark-parse'
+import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
+import remarkMath from 'remark-math'
+import remarkStringify from 'remark-stringify'
+import { toString as mdastToString } from 'mdast-util-to-string'
 import { EditorState as CMState } from '@codemirror/state'
 // import { EditorView as CMView } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
@@ -24,7 +31,7 @@ async function prerenderDiagrams(html: string): Promise<string> {
   if (mermaidEls.length) {
     try {
       const mermaidUrl = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs'
-      const mermaidMod: unknown = await import(/* @vite-ignore */ mermaidUrl as any)
+      const mermaidMod: unknown = await import(/* @vite-ignore */ mermaidUrl)
       const mermaid: MermaidLib = (mermaidMod as { default?: MermaidLib }).default || (mermaidMod as MermaidLib)
       mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'default' })
       let idx = 0
@@ -48,7 +55,7 @@ async function prerenderDiagrams(html: string): Promise<string> {
   if (abcEls.length) {
     try {
       const abcUrl = 'https://esm.sh/abcjs@6.2.0?min'
-      const ABCJSMod: unknown = await import(/* @vite-ignore */ abcUrl as any)
+      const ABCJSMod: unknown = await import(/* @vite-ignore */ abcUrl)
       const ABCJS: AbcjsLib = (ABCJSMod as { default?: AbcjsLib }).default || (ABCJSMod as AbcjsLib)
       for (const el of abcEls) {
         const src = el.getAttribute('data-src') || ''
@@ -94,7 +101,7 @@ async function renderCodeBlockWithCM(lang: string, src: string): Promise<{ html:
   const state = CMState.create({ doc: src, extensions: Array.isArray(langExt) ? langExt : [langExt] })
   const tree = syntaxTree(state)
   const lezerUrl = 'https://esm.sh/@lezer/highlight@1.2.0?min'
-  const mod = await import(/* @vite-ignore */ lezerUrl as any)
+  const mod: unknown = await import(/* @vite-ignore */ lezerUrl)
   const highlightTree: (t: unknown, h: unknown, cb: (from: number, to: number, cls: string) => void) => void = (mod as { highlightTree: (t: unknown, h: unknown, cb: (from: number, to: number, cls: string) => void) => void }).highlightTree
   const classHighlighter: unknown = (mod as { classHighlighter: unknown }).classHighlighter
   const tokens: { text: string; cls?: string }[] = []
@@ -393,142 +400,64 @@ function splitMarkdownToSlideStacks(md: string): string[][] {
  
 
 type Block = { kind: 'heading'|'paragraph'|'code'|'image'|'list'|'blockquote'|'math'|'hr'|'toc'; level?: number; text: string }
+type MdastNode = { type: string; depth?: number; children?: MdastNode[]; value?: string; lang?: string; url?: string; alt?: string }
+type MdastRoot = { type: string; children?: MdastNode[] }
+
+function stringifyNode(node: MdastNode): string {
+  const root: MdastRoot = { type: 'root', children: [node] }
+  const out = unified().use(remarkStringify).stringify(root as any)
+  return String(out)
+}
 
 function tokenizeBlocks(md: string): Block[] {
-  const lines = md.split(/\r?\n/)
+  const root = unified().use(remarkParse).use(remarkGfm).use(remarkBreaks).use(remarkMath).parse(md) as unknown as MdastRoot
   const blocks: Block[] = []
-  let i = 0
-  let buf: string[] = []
-  const flushPara = () => {
-    const t = buf.join('\n').trim()
-    buf = []
-    if (!t) return
-    blocks.push({ kind: 'paragraph', text: t })
+  const children = root.children || []
+  for (const node of children) {
+    if (node.type === 'heading') {
+      const level = Math.max(1, Math.min(6, node.depth || 1))
+      const text = `${'#'.repeat(level)} ${mdastToString(node as unknown as { type: string })}`
+      blocks.push({ kind: 'heading', level, text })
+      continue
+    }
+    if (node.type === 'thematicBreak') {
+      blocks.push({ kind: 'hr', text: '---' })
+      continue
+    }
+    if (node.type === 'code') {
+      const lang = (node.lang || '')
+      const val = String(node.value || '')
+      const text = `\`\`\`${lang}\n${val}\n\`\`\``
+      blocks.push({ kind: 'code', text })
+      continue
+    }
+    if (node.type === 'math') {
+      const val = String(node.value || '')
+      const text = `$$\n${val}\n$$`
+      blocks.push({ kind: 'math', text })
+      continue
+    }
+    if (node.type === 'blockquote') {
+      const text = stringifyNode(node)
+      blocks.push({ kind: 'blockquote', text })
+      continue
+    }
+    if (node.type === 'list') {
+      const text = stringifyNode(node)
+      blocks.push({ kind: 'list', text })
+      continue
+    }
+    if (node.type === 'paragraph') {
+      const textRaw = mdastToString(node as unknown as { type: string }).trim().toLowerCase()
+      if (textRaw === '[toc]') { blocks.push({ kind: 'toc', text: '[toc]' }); continue }
+      const onlyImg = (node.children || []).length === 1 && (node.children || [])[0]?.type === 'image'
+      const text = stringifyNode(node)
+      blocks.push({ kind: onlyImg ? 'image' : 'paragraph', text })
+      continue
+    }
+    const text = stringifyNode(node)
+    blocks.push({ kind: 'paragraph', text })
   }
-  let inCode = false
-  let codeLang = ''
-  let codeBuf: string[] = []
-  let inMath = false
-  let mathBuf: string[] = []
-  let listBuf: string[] = []
-  let inList = false
-  let quoteBuf: string[] = []
-  let inQuote = false
-  while (i < lines.length) {
-    const ln = lines[i]
-    const lnTrim = (ln || '').trim().toLowerCase()
-    if (lnTrim === '[toc]') {
-      flushPara()
-      blocks.push({ kind: 'toc', text: '[toc]' })
-      i++
-      continue
-    }
-    if (!inCode && /^\s*```/.test(ln)) {
-      flushPara()
-      inCode = true
-      codeLang = ln.replace(/^\s*```\s*/, '')
-      codeBuf = []
-      i++
-      continue
-    }
-    if (inCode) {
-      if (/^\s*```\s*$/.test(ln)) {
-        blocks.push({ kind: 'code', text: '```' + codeLang + '\n' + codeBuf.join('\n') + '\n```' })
-        inCode = false
-        codeLang = ''
-        codeBuf = []
-        i++
-        continue
-      }
-      codeBuf.push(ln)
-      i++
-      continue
-    }
-    if (!inMath && /^\s*\$\$\s*$/.test(ln)) {
-      flushPara()
-      inMath = true
-      mathBuf = ['$$']
-      i++
-      continue
-    }
-    if (inMath) {
-      mathBuf.push(ln)
-      if (/^\s*\$\$\s*$/.test(ln)) {
-        blocks.push({ kind: 'math', text: mathBuf.join('\n') })
-        inMath = false
-        mathBuf = []
-      }
-      i++
-      continue
-    }
-    if (!inList && /^\s*(?:[-*+]\s+|\d+\.\s+)/.test(ln)) {
-      flushPara()
-      inList = true
-      listBuf = [ln]
-      i++
-      continue
-    }
-    if (inList) {
-      if (/^\s*(?:[-*+]\s+|\d+\.\s+)/.test(ln)) {
-        listBuf.push(ln)
-        i++
-        continue
-      }
-      blocks.push({ kind: 'list', text: listBuf.join('\n') })
-      inList = false
-      listBuf = []
-      continue
-    }
-    if (!inQuote && /^\s*>\s?/.test(ln)) {
-      flushPara()
-      inQuote = true
-      quoteBuf = [ln]
-      i++
-      continue
-    }
-    if (inQuote) {
-      if (/^\s*>\s?/.test(ln)) {
-        quoteBuf.push(ln)
-        i++
-        continue
-      }
-      blocks.push({ kind: 'blockquote', text: quoteBuf.join('\n') })
-      inQuote = false
-      quoteBuf = []
-      continue
-    }
-    if (/^\s*---\s*$/.test(ln)) {
-      flushPara()
-      blocks.push({ kind: 'hr', text: ln })
-      i++
-      continue
-    }
-    const h = /^(\s*#{1,6})\s+(.*)$/.exec(ln)
-    if (h) {
-      flushPara()
-      const level = h[1].trim().length
-      blocks.push({ kind: 'heading', level, text: ln })
-      i++
-      continue
-    }
-    const img = /^\s*!\[[^\]]*\]\([^)]*\)\s*$/.test(ln)
-    if (img) {
-      flushPara()
-      blocks.push({ kind: 'image', text: ln })
-      i++
-      continue
-    }
-    if (/^\s*$/.test(ln)) {
-      flushPara()
-      i++
-      continue
-    }
-    buf.push(ln)
-    i++
-  }
-  flushPara()
-  if (inList && listBuf.length) blocks.push({ kind: 'list', text: listBuf.join('\n') })
-  if (inQuote && quoteBuf.length) blocks.push({ kind: 'blockquote', text: quoteBuf.join('\n') })
   return blocks
 }
 
@@ -618,6 +547,11 @@ function paginateAdvanced(md: string): string[][] {
       j++
       continue
     }
+    if (b.kind === 'hr') {
+      flushStack()
+      j++
+      continue
+    }
     if (b.kind === 'heading' && (b.level || 1) === 1) {
       flushStack()
       currentStack.push(b.text)
@@ -645,14 +579,14 @@ function paginateAdvanced(md: string): string[][] {
           currentStack.push(nb.text)
           j++
           const afterH2: Block[] = []
-          while (j < blocks.length) {
-            const tb = blocks[j]
-            if (tb.kind === 'heading' && (tb.level || 1) <= 2) break
-            if (tb.kind === 'toc') {
-              // Flush anything accumulated before TOC inside H2 segment
-              if (afterH2.length) {
-                // Process inner H3 segmentation within H2 segment before TOC
-                let k = 0
+      while (j < blocks.length) {
+        const tb = blocks[j]
+        if (tb.kind === 'heading' && (tb.level || 1) <= 2) break
+        if (tb.kind === 'toc') {
+          // Flush anything accumulated before TOC inside H2 segment
+          if (afterH2.length) {
+            // Process inner H3 segmentation within H2 segment before TOC
+            let k = 0
                 let pending: Block[] = []
                 const flushPending = () => {
                   if (pending.length) {
@@ -684,15 +618,55 @@ function paginateAdvanced(md: string): string[][] {
                   k++
                 }
                 flushPending()
-                afterH2.length = 0
-              }
-              currentStack.push('::PM_TOC_OVERVIEW::')
-              j++
-              continue
+              afterH2.length = 0
             }
-            afterH2.push(tb)
+            currentStack.push('::PM_TOC_OVERVIEW::')
             j++
+            continue
           }
+          if (tb.kind === 'hr') {
+            if (afterH2.length) {
+              let k = 0
+              let pending: Block[] = []
+              const flushPending = () => {
+                if (pending.length) {
+                  const slides = packBlocksIntoSlides(pending, null)
+                  currentStack.push(...slides)
+                  pending = []
+                }
+              }
+              while (k < afterH2.length) {
+                const ib = afterH2[k]
+                if (ib.kind === 'heading' && (ib.level || 1) >= 3 && (ib.level || 1) <= 6) {
+                  flushPending()
+                  const level = ib.level || 3
+                  const prefix = ib.text
+                  k++
+                  const after: Block[] = []
+                  while (k < afterH2.length) {
+                    const xb = afterH2[k]
+                    if (xb.kind === 'heading' && (xb.level || 1) <= level) break
+                    after.push(xb)
+                    k++
+                  }
+                  const slides = packBlocksIntoSlides(after, prefix)
+                  if (!slides.length) currentStack.push(prefix)
+                  else currentStack.push(...slides)
+                  continue
+                }
+                pending.push(ib)
+                k++
+              }
+              flushPending()
+              afterH2.length = 0
+            }
+            j++
+            flushStack()
+            continue
+          }
+          afterH2.push(tb)
+          j++
+        }
           if (afterH2.length) {
             // Ensure at most one H3 per page: segment by H3 inside H2
             let k = 0
@@ -788,6 +762,12 @@ function paginateAdvanced(md: string): string[][] {
           k++
           continue
         }
+        if (nb.kind === 'hr') {
+          flushPending()
+          k++
+          flushStack()
+          continue
+        }
         if (nb.kind === 'heading' && (nb.level || 1) >= 3 && (nb.level || 1) <= 6) {
           flushPending()
           const level = nb.level || 3
@@ -841,6 +821,16 @@ function paginateAdvanced(md: string): string[][] {
         j++
         continue
       }
+      if (tb.kind === 'hr') {
+        if (run.length) {
+          const slides = packBlocksIntoSlides(run, null)
+          currentStack.push(...slides)
+          run.length = 0
+        }
+        j++
+        flushStack()
+        continue
+      }
       run.push(tb)
       j++
     }
@@ -855,9 +845,11 @@ function paginateAdvanced(md: string): string[][] {
 
 export const exportRevealToHTML = async (content: string, title: string = 'Slides'): Promise<string> => {
   const { config } = useEditorStore.getState()
-  const stacks = (config.slidePagination === 'heading')
-    ? paginateAdvanced(content)
-    : splitMarkdownToSlideStacks(content)
+  const hasSeparators = /(^|\n)\s*---\s*(\n|$)/.test(content) || /(^|\n)\s*--\s*(\n|$)/.test(content)
+  const useSeparators = (config.slidePagination === 'separators') || (config.slidePagination !== 'heading' && hasSeparators)
+  const stacks = useSeparators
+    ? splitMarkdownToSlideStacks(content)
+    : paginateAdvanced(content)
   const slideSectionsHtml: string[] = []
   for (const stack of stacks) {
     if (stack.length <= 1) {
@@ -901,22 +893,41 @@ export const exportRevealToHTML = async (content: string, title: string = 'Slide
   <style>
     .reveal a { color: ${linkColor}; }
     .reveal .slides { text-align: left; }
-    .reveal .slides section { padding: 12px 24px; }
-    .reveal .slides section h1 { font-size: 2.0rem; margin: 0 0 .5rem; }
-    .reveal .slides section h2 { font-size: 1.6rem; margin: .25rem 0 .4rem; border-bottom: 1px solid ${dark ? '#1f2937' : '#e5e7eb'}; padding-bottom: .2rem; }
-    .reveal .slides section h3 { font-size: 1.3rem; margin: .25rem 0 .25rem; }
-    .reveal .slides section p { margin: .4rem 0; }
+    .reveal .slides section {
+      padding: 4vh 24px 3vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      transform: translateY(-3vh);
+    }
+    .reveal .slides section h1 { font-size: 3.0rem; margin: 0 0 .6rem; font-weight: 700; text-align: center; }
+    .reveal .slides section h2 { font-size: 2.4rem; margin: .3rem 0 .5rem; border-bottom: 1px solid ${dark ? '#1f2937' : '#e5e7eb'}; padding-bottom: .2rem; text-align: center; }
+    .reveal .slides section h3 { font-size: 2.0rem; margin: .25rem 0 .4rem; text-align: center; }
+    .reveal .slides section h4 { font-size: 1.6rem; margin: .2rem 0 .35rem; text-align: center; }
+    .reveal .slides section h5 { font-size: 1.4rem; margin: .2rem 0 .3rem; text-align: center; }
+    .reveal .slides section h6 { font-size: 1.2rem; margin: .2rem 0 .25rem; color: ${blockquoteColor}; text-align: center; }
+    .reveal .slides section p { margin: .4rem 0; font-size: 1.1rem; }
+    .reveal .slides section li { font-size: 1.1rem; }
     .reveal .slides section code { background: ${inlineCodeBg}; color: ${inlineCodeColor}; padding: .12rem .25rem; border-radius: 4px; }
-    .reveal .slides section pre { background: ${preBg}; color: ${preColor}; border: 1px solid ${preBorder}; border-radius: 8px; padding: .8rem; max-height: 70vh; overflow: auto; }
-    .reveal .slides section pre code { background: transparent; color: inherit; padding: 0; }
+    .reveal .slides section pre { background: ${preBg}; color: ${preColor}; border: 1px solid ${preBorder}; border-radius: 8px; padding: .8rem; max-height: 70vh; overflow: auto; font-size: 1.05rem; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+    .reveal .slides section pre code { background: transparent; color: inherit; padding: 0; font-size: inherit; white-space: inherit; word-break: inherit; overflow-wrap: inherit; }
     .reveal .slides section blockquote { border-left: 4px solid ${blockquoteBorder}; margin: 0; padding-left: 1rem; color: ${blockquoteColor}; }
-    .reveal .slides section img { max-width: 80%; max-height: 70vh; height: auto; border-radius: 6px; display: block; margin: .6rem auto; object-fit: contain; }
+    .reveal .slides section img { width: 60%; max-width: 60%; max-height: 65vh; height: auto; border-radius: 6px; display: block; margin: .6rem auto; object-fit: contain; }
     .reveal .slides section table { border-collapse: collapse; width: 80%; margin: .8rem auto; }
     .reveal .slides section th, .reveal .slides section td { border: 1px solid ${dark ? '#374151' : '#dddddd'}; padding: .5rem .6rem; text-align: left; }
     .reveal .slides section th { background: ${dark ? '#111827' : '#f5f5f5'}; font-weight: 600; }
+    .reveal .slides section .mermaid { display: flex; justify-content: center; align-items: center; margin: .6rem auto; }
+    .reveal .slides section .mermaid svg { max-width: 80%; height: auto; }
+    .reveal .slides section ul.contains-task-list { list-style: none; padding-left: 0; }
+    .reveal .slides section li.task-list-item { list-style: none; margin: .3rem 0; }
+    .reveal .slides section li.task-list-item input[type="checkbox"] {
+      width: 18px; height: 18px; transform: scale(1.2); margin-right: .5rem; accent-color: ${linkColor};
+    }
     .pm-toc-block ul { list-style: none; padding-left: 0; }
     .pm-toc-block li { margin: 0.25rem 0; }
-${cmCss}
+    .reveal .slides section .pm-codeblock-cm .cm-line { font-size: 1.15rem; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+    .reveal .slides section .pm-codeblock-cm .cm-content { white-space: normal; }
+  ${cmCss}
   </style>
   <script>
     window.MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$','$$'], ['\\[','\\]']] }, svg: { fontCache: 'global' } }

@@ -125,9 +125,7 @@ export default function SlidesPreview({ visible, content, title = 'Slides Previe
             <button
               onClick={() => { setAutoplay(false); onClose() }}
               style={{ padding: '6px 10px', border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`, borderRadius: '6px', background: 'transparent', color: isDark ? '#e5e7eb' : '#111827', cursor: 'pointer' }}
-            >
-              关闭
-            </button>
+            >关闭</button>
           </div>
         </div>
         <div style={{ flex: 1, backgroundColor: isDark ? '#0b1220' : '#ffffff' }}>

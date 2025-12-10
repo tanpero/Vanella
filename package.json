@@ -58,6 +58,7 @@
     "abcjs": "^6.5.2",
     "clsx": "^2.1.1",
     "codemirror-asciidoc": "^2.0.1",
+    "electron-updater": "^6.6.2",
     "lucide-react": "^0.555.0",
     "mathjax-full": "^3.2.2",
     "mdast-util-to-string": "^4.0.0",
@@ -116,7 +117,7 @@
     "appId": "com.vanella.app",
     "productName": "Vanella",
     "directories": {
-      "output": "release",
+      "output": "release2",
       "buildResources": "public"
     },
     "files": [
@@ -129,6 +130,12 @@
     "asarUnpack": [
       "**/*.node"
     ],
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://updates.example.com/vanella/"
+      }
+    ],
     "win": {
       "target": [
         "nsis"
@@ -138,6 +145,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
+      "installerIcon": "public/favicon.ico",
+      "uninstallerIcon": "public/favicon.ico",
       "uninstallDisplayName": "Vanella Uninstaller",
       "artifactName": "${productName} Setup ${version}.exe"
     },

@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
+const { autoUpdater } = require('electron-updater')
 const path = require('node:path')
 const fs = require('node:fs')
 const { createHash } = require('node:crypto')
@@ -21,11 +22,17 @@ function hashSha256(input) {
   return h.digest('hex')
 }
 
+function resolveIcon() {
+  const isDev = process.env.ELECTRON_DEV === 'true' || process.env.VITE_DEV_SERVER_URL
+  if (isDev) return path.join(process.cwd(), 'public', 'favicon.ico')
+  return path.join(process.resourcesPath, 'public', 'favicon.ico')
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1000,
     height: 700,
-    icon: path.join(process.resourcesPath, 'public', 'favicon.ico'),
+    icon: resolveIcon(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true
@@ -93,9 +100,52 @@ if (!gotLock) {
       await fs.promises.writeFile(filePath, content, 'utf-8')
       return true
     })
+    ipcMain.handle('check-for-updates', async () => {
+      const isDev = process.env.ELECTRON_DEV === 'true' || process.env.VITE_DEV_SERVER_URL
+      if (isDev) return false
+      try {
+        autoUpdater.autoDownload = true
+        autoUpdater.autoInstallOnAppQuit = true
+        await autoUpdater.checkForUpdates()
+        return true
+      } catch {
+        return false
+      }
+    })
+    ipcMain.handle('install-update-now', async () => {
+      try {
+        autoUpdater.quitAndInstall()
+        return true
+      } catch {
+        return false
+      }
+    })
     const argPath = extractMdArg(process.argv)
     if (argPath) deferredOpenPath = argPath
     createWindow()
+
+    const isDev = process.env.ELECTRON_DEV === 'true' || process.env.VITE_DEV_SERVER_URL
+    if (!isDev) {
+      autoUpdater.autoDownload = true
+      autoUpdater.autoInstallOnAppQuit = true
+      autoUpdater.on('error', (error) => {
+        const win = BrowserWindow.getAllWindows()[0]
+        if (win) win.webContents.send('update-error', { message: String(error && error.message || 'unknown') })
+      })
+      autoUpdater.on('update-available', (info) => {
+        const win = BrowserWindow.getAllWindows()[0]
+        if (win) win.webContents.send('update-available', info)
+      })
+      autoUpdater.on('download-progress', (progress) => {
+        const win = BrowserWindow.getAllWindows()[0]
+        if (win) win.webContents.send('update-download-progress', progress)
+      })
+      autoUpdater.on('update-downloaded', (info) => {
+        const win = BrowserWindow.getAllWindows()[0]
+        if (win) win.webContents.send('update-downloaded', info)
+      })
+      try { autoUpdater.checkForUpdates() } catch {}
+    }
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

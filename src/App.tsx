@@ -90,6 +90,34 @@ export default function App() {
       }
     })
   }, [setActiveFile, addTab])
+
+  useEffect(() => {
+    const api = (window as unknown as {
+      api?: {
+        onUpdateAvailable?: (cb: (info: { version?: string }) => void) => void
+        onUpdateProgress?: (cb: (progress: { percent?: number }) => void) => void
+        onUpdateDownloaded?: (cb: () => void) => void
+        onUpdateError?: (cb: (payload: { message?: string }) => void) => void
+        installUpdateNow?: () => void
+        checkForUpdates?: () => void
+      }
+    }).api
+    if (!api) return
+    api.onUpdateAvailable?.((info) => {
+      console.log('[update-available]', info?.version || '')
+    })
+    api.onUpdateProgress?.((progress) => {
+      console.log('[update-progress]', progress?.percent || 0)
+    })
+    api.onUpdateDownloaded?.(() => {
+      const ok = window.confirm('新版本已下载，是否立即重启并安装？')
+      if (ok) api.installUpdateNow?.()
+    })
+    api.onUpdateError?.((payload) => {
+      console.warn('[update-error]', payload?.message || '')
+    })
+    api.checkForUpdates?.()
+  }, [])
   
   return (
     <Router>
