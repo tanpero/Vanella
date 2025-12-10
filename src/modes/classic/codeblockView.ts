@@ -10,6 +10,14 @@ import { mapLanguage, LANGUAGE_ITEMS, mapTheme } from '@/modes/shared/codemirror
 import { useEditorStore } from '@/stores/editorStore'
 import type { Extension } from '@codemirror/state'
 
+/*
+  CodeBlockView：桥接 ProseMirror 代码块与 CodeMirror 编辑器
+  - 基于 attrs.language 配置语法高亮；支持主题切换（浅/深）
+  - 将 CM 文本同步到 PM 节点内容（替换节点内部文本）
+  - 显示行号 gutter；点击尾部在文档末尾创建新行
+  - 提供语言选择器（输入过滤 + 列表选择），写回 language 属性
+*/
+
 export class CodeBlockView {
   node: PMNode
   view: PMEditorView
@@ -34,6 +42,7 @@ export class CodeBlockView {
     this.dark = isDark
     this.prevLang = node.attrs?.language
 
+    // 外层包裹与编辑区域
     const wrapper = document.createElement('div')
     wrapper.className = `pm-codeblock-cm ${isDark ? 'dark' : 'light'}`
     wrapper.style.border = isDark ? '1px solid #374151' : '1px solid #e5e7eb'
@@ -91,6 +100,7 @@ export class CodeBlockView {
       themeExt
     ]
 
+    // 初始化 CodeMirror 状态与视图
     const state = CMState.create({ doc: initialDoc, extensions })
     const cm = new CMEditorView({
       state,
@@ -133,12 +143,9 @@ export class CodeBlockView {
     })
     wrapper.addEventListener('mousedown', () => { this.cm.focus() })
     editorHost.addEventListener('mousedown', () => { this.cm.focus() })
-    // allow default click selection behavior; only focus without preventing default
-    // removed pointerdown preventDefault to restore mouse-based cursor placement
-
     setTimeout(() => { this.cm.focus() }, 0)
 
-    // click near bottom to add new line at tail when code block is last
+    // 当代码块下方没有其他内容时，点击底部添加新行
     wrapper.addEventListener('click', (e) => {
       const rect = wrapper.getBoundingClientRect()
       const y = (e as MouseEvent).clientY
@@ -160,6 +167,7 @@ export class CodeBlockView {
       }
     })
 
+    // 响应主题切换，更新 CM 扩展与外观
     this.unsub = useEditorStore.subscribe((state, prev) => {
       const curDark = state.config.theme === 'dark'
       const themeKey = curDark ? state.config.codeblockThemeDark : state.config.codeblockThemeLight
@@ -213,7 +221,7 @@ export class CodeBlockView {
   update(node: PMNode) {
     if (node.type !== this.node.type) return false
     this.node = node
-    // Only reconfigure language when actually changed
+    // 仅当语言或主题实际发生变化时重建扩展
     const curLang = node.attrs?.language
     const { config } = useEditorStore.getState()
     const curDark = config.theme === 'dark'
@@ -241,7 +249,7 @@ export class CodeBlockView {
       const nextExt = [...baseExt, ...(Array.isArray(langExt) ? langExt : [langExt]), themeExt]
       const state = CMState.create({ doc: this.cm.state.doc.toString(), extensions: nextExt })
       this.cm.setState(state)
-      // update outer styles
+      // 更新外部样式
       const wrapper = this.dom
       if (wrapper) {
         wrapper.className = `pm-codeblock-cm ${this.dark ? 'dark' : 'light'}`

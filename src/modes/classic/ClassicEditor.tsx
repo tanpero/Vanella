@@ -25,7 +25,21 @@ import { AbcBlockView } from './abcBlockView'
 import { TocView, TOC_VIEWS } from './tocView'
 import type { Node as PMNode, NodeType, MarkType } from 'prosemirror-model'
 import { buildRegex } from '@/utils/search'
+/*
+  ClassicEditor 组件（ProseMirror + 一组插件/NodeView）
+  - 初始化空文档并通过 markdownToPmDoc 载入 Markdown 源码
+  - 组合 dropCursor/gapCursor/history/tableEditing 等通用插件
+  - 自定义插件：
+    * appendTransaction 将内联 Markdown 模式（链接/图片/加粗/斜体/行内代码、[toc]）转为结构化 PM 节点
+    * decorations 显示内联标记的“可见标记”与数学行内预览
+    * 搜索高亮插件：基于正则在文本节点上绘制命中范围
+  - 键位绑定：支持标题、引用、列表、任务清单、代码/数学块快捷输入与撤销/重做
+  - NodeViews：代码块、数学块、Mermaid、ABC、目录、任务项、图片的交互式编辑与预览
+  - 大文件：分批增量载入与进度反馈，避免一次性渲染卡顿
+  - 文档改变节流：转 Markdown 并写回状态，以实现“双模”同步
+*/
 
+// 在编辑时为当前文本块添加“可视化 Markdown 标记”和块级提示样式
 function markerDecorations(state: EditorState): DecorationSet {
   const decos: Decoration[] = []
   const sel = state.selection
@@ -150,6 +164,7 @@ function markerDecorations(state: EditorState): DecorationSet {
     }
   }
 
+  // 解析并构建内联标记的样式与隐藏标记
   const inlineDecos = buildInlineDecorations(state)
   return DecorationSet.create(state.doc, decos.concat(inlineDecos))
 }
@@ -159,7 +174,6 @@ export default function ClassicEditor() {
   const viewRef = useRef<EditorView | null>(null)
   const { activeFile, updateFileContent, config, markdownSource, setPmView, showContextMenu, setAutofocusMathPos } = useEditorStore()
   const isDark = config.theme === 'dark'
-  const captionCentered = !!config.imageCaptionBelowCentered
 
   useEffect(() => {
     let disposed = false
@@ -168,6 +182,7 @@ export default function ClassicEditor() {
       const initialText = markdownSource || activeFile?.content || ''
       const isLarge = (initialText.length > 20000) || (initialText.split(/\n/).length > 1200)
       const initialDoc = schema.node('doc', null, [schema.node('paragraph')])
+      // 创建编辑器状态并安装插件
       const state = EditorState.create({
         doc: initialDoc as PMNode,
         schema,
@@ -177,6 +192,7 @@ export default function ClassicEditor() {
           history(),
           tableEditing(),
           new Plugin({
+            // 将当前光标所在文本块按 Markdown 规则进行结构化转换
             appendTransaction: (trs, oldState, newState) => {
               if (!trs.some(t => t.docChanged)) return null
               const sel = newState.selection
@@ -258,6 +274,7 @@ export default function ClassicEditor() {
             }
           }),
           keymap({
+            // 根据行内输入触发块级转换（``` 代码/mermaid/abc，$$ 数学）
             Enter: (state, dispatch) => {
               const txt = state.selection.$from.parent.textContent || ''
               const m = /^```([A-Za-z0-9+-]*)$/.exec(txt)
@@ -312,6 +329,7 @@ export default function ClassicEditor() {
             'Mod-i': (state, dispatch) => toggleMark(schema.marks.em)(state, dispatch),
             'Mod-]': sinkListItem(schema.nodes.list_item),
             'Mod-[': liftListItem(schema.nodes.list_item),
+            // 退格在列表/标题/空代码块中进行语义化回退
             Backspace: (state, dispatch) => {
               const $from = state.selection.$from
               if ($from.parent.type === schema.nodes.list_item && $from.parentOffset === 0) {
@@ -351,14 +369,15 @@ export default function ClassicEditor() {
             }
           }),
           new Plugin({
+            // 在输入末尾时自动将光标移出成对标记，改善输入体验
             appendTransaction: (trs, oldState, newState) => {
               const sel = newState.selection
               const $pos = sel.$from
               const parent = $pos.parent
               if (!parent || !parent.isTextblock) return null
               const baseStart = $pos.start()
-              // scan selection's text node boundaries
-              // simple scan for right-boundary reposition
+              // 扫描选定文本节点的边界
+              // 简单扫描以重新定位右边界
               let accum = 0
               for (let i = 0; i < parent.childCount; i++) {
                 const child = parent.child(i)
@@ -366,7 +385,7 @@ export default function ClassicEditor() {
                 const absTo = absFrom + child.nodeSize
                 if (sel.anchor >= absFrom && sel.anchor <= absTo && child.isText) {
                   const content = child.text || ''
-                  // check patterns ending at anchor
+                  // 检查模式是否以锚点（标记）结束
                   if (content.endsWith('**')) {
                     const newPos = absTo
                     if (sel.anchor === absTo - 2) return newState.tr.setSelection(TextSelection.create(newState.doc, newPos))
@@ -384,6 +403,7 @@ export default function ClassicEditor() {
             }
           }),
         new Plugin({
+          // 内联 Markdown 与数学行内的装饰渲染（样式/预览）
           props: {
             decorations: (s: EditorState) => {
               const md = buildInlineDecorations(s)
@@ -393,6 +413,7 @@ export default function ClassicEditor() {
           }
         }),
         new Plugin({
+          // 搜索高亮：读取全局 store 中的搜索参数，绘制命中范围
           props: {
             decorations: (s: EditorState) => {
               const { searchVisible, searchQuery, regexEnabled, caseSensitive, wholeWord, searchIndex } = useEditorStore.getState() as unknown as { searchVisible: boolean, searchQuery: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean, searchIndex: number }
@@ -422,6 +443,7 @@ export default function ClassicEditor() {
         }),
           keymap(baseKeymap),
           inputRules({
+            // 输入规则：标题、引用、列表、GFM 任务清单、水平线、链接/图片
             rules: [
               textblockTypeInputRule(/^#\s$/, schema.nodes.heading, { level: 1 }),
               textblockTypeInputRule(/^##\s$/, schema.nodes.heading, { level: 2 }),
@@ -464,6 +486,7 @@ export default function ClassicEditor() {
             ]
           }),
           new Plugin({
+            // 保持文档末尾始终存在一个空段落，便于继续输入
             appendTransaction: (trs, oldState, newState) => {
               const last = newState.doc.lastChild
               if (!last || last.type !== schema.nodes.paragraph || last.textContent.length !== 0) {
@@ -477,6 +500,7 @@ export default function ClassicEditor() {
             props: {
               decorations: (s: EditorState) => markerDecorations(s),
               handleDOMEvents: {
+                // 删除 inline 标记对应的 Mark（点击虚拟标记后退格/删除）
                 keydown: (view, event: KeyboardEvent) => {
                   const sel = view.state.selection
                   const pos = sel.$from.pos
@@ -485,7 +509,7 @@ export default function ClassicEditor() {
                   const em = schema.marks.em
                   const code = schema.marks.code
                   const handleRemove = (markType: MarkType) => {
-                    // remove mark around current text node
+                    // 移除当前文本节点周围的标记
                     const $pos = view.state.doc.resolve(pos)
                     const parent = $pos.parent
                     let accum = 0
@@ -512,6 +536,7 @@ export default function ClassicEditor() {
                   return false
                 }
                 , click: (view, event: MouseEvent) => {
+                  // 点击链接：Ctrl/双击在新窗口打开；单击将光标定位并显示 href 标记
                   const target = event.target as HTMLElement
                   if (target && target.closest('a[href]')) {
                     const el = target.closest('a[href]') as HTMLAnchorElement
@@ -533,6 +558,7 @@ export default function ClassicEditor() {
                       return true
                     }
                   }
+                  // 点击数学行内预览可进入编辑
                   if (target && target.closest('.pm-math-inline')) {
                     const el = target.closest('.pm-math-inline') as HTMLElement
                     const pos = view.posAtDOM(el, 0)
@@ -543,6 +569,7 @@ export default function ClassicEditor() {
                   return false
                 }
                 , paste: (view, event: ClipboardEvent) => {
+                  // 纯文本粘贴：尝试解析 Markdown 并插入为结构化 PM 节点
                   const text = event.clipboardData?.getData('text/plain') || ''
                   const html = event.clipboardData?.getData('text/html') || ''
                   if (!text) return false
@@ -572,6 +599,7 @@ export default function ClassicEditor() {
                   }
                   const tag = target?.getAttribute?.('data-marker') || ''
                   if (tag === 'link-href') {
+                    // 在 href 标记上直接编辑链接地址，动态同步 mark 属性
                     const fromStr = target.getAttribute('data-link-from') || ''
                     const toStr = target.getAttribute('data-link-to') || ''
                     const from = parseInt(fromStr, 10)
@@ -587,6 +615,7 @@ export default function ClassicEditor() {
                     }
                   }
                   if (tag === 'image-alt' || tag === 'image-src') {
+                    // 在图片标记上直接编辑 alt/src，并同步到 image 节点 attrs
                     const posStr = target.getAttribute('data-image-pos') || ''
                     const pos = parseInt(posStr, 10)
                     if (!Number.isNaN(pos)) {
@@ -610,6 +639,7 @@ export default function ClassicEditor() {
                   return false
                 }
                 , blur: (view, event: FocusEvent) => {
+                  // 避免从虚拟标记移出时触发不必要的状态变更
                   const target = event.target as HTMLElement
                   if (target && target.closest('.pm-image-markers')) return true
                   const tag = target?.getAttribute?.('data-marker') || ''
@@ -625,6 +655,7 @@ export default function ClassicEditor() {
       })
       if (disposed) return
       const convertRef = { timer: 0 as number | undefined, doc: null as PMNode | null }
+      // 创建 EditorView 并挂载 NodeViews 与事务派发器
       const view = new EditorView(mountRef.current, {
         state,
         nodeViews: {
@@ -646,6 +677,7 @@ export default function ClassicEditor() {
             return
           }
           if (convertRef.timer) clearTimeout(convertRef.timer)
+          // 节流：在 60ms 内合并多次事务，统一转换为 Markdown 写回文件内容
           convertRef.timer = window.setTimeout(() => {
             const d = convertRef.doc
             if (d) {
@@ -662,6 +694,7 @@ export default function ClassicEditor() {
       viewRef.current = view
       setPmView(view)
 
+      // 大文件：分块增量构建 PM 文档，提高解析与渲染的响应性
       if (isLarge) {
         const { setLoading, clearLoading } = useEditorStore.getState()
         setLoading({ active: true, stage: '解析中', percent: 1, cancellable: false })
@@ -701,6 +734,7 @@ export default function ClassicEditor() {
         }
         clearLoading()
       } else {
+        // 小文件：一次性转换并替换到文档
         try {
           const full = await markdownToPmDoc(schema, initialText)
           const tr = view.state.tr.replaceWith(1, view.state.doc.content.size + 1, full.content)

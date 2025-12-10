@@ -9,6 +9,13 @@ import { useEditorStore } from '@/stores/editorStore'
 import { mapTheme } from '@/modes/shared/codemirrorConfig'
 import ABCJS from 'abcjs'
 
+/*
+  AbcBlockView：ABC 记谱源码编辑与乐谱预览
+  - 使用 CodeMirror 编辑 ABC 语法，预览通过 ABCJS.renderAbc 输出 SVG
+  - 预览在深色主题下调整笔画与文字颜色，提升对比度
+  - 根据焦点与内容切换编辑区/预览可见性
+*/
+
 export class AbcBlockView {
   node: PMNode
   view: PMEditorView
@@ -220,6 +227,7 @@ export class AbcBlockView {
   }
 
   private renderScore(code: string) {
+    // 渲染 ABC 乐谱，将源码输出为 SVG，深色主题下增强可读性；错误时给出提示
     try {
       this.preview.innerHTML = ''
       const paper = document.createElement('div')

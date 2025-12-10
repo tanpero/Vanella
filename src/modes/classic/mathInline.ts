@@ -2,6 +2,14 @@ import { EditorState } from 'prosemirror-state'
 import { Decoration } from 'prosemirror-view'
 import { renderInline } from '@/latex/mathjax'
 
+/*
+  行内数学预览（$...$ 与 \(...\)）
+  - 解析行内数学范围，避免与 $$ 块级围栏冲突
+  - 非选中状态下隐藏原始标记并以 SVG 预览替代
+  - 选中状态下在中点插入小型预览盒，便于编辑时参考
+*/
+
+// 扫描文本，查找 $...$ 或 \(...\) 的成对范围
 function findInlineRanges(text: string) {
   const ranges: Array<{ from: number; to: number; raw: string }> = []
   let i = 0
@@ -35,6 +43,7 @@ function findInlineRanges(text: string) {
   return ranges
 }
 
+// 将行内数学转换为预览装饰；选中时改为锚点预览
 export function buildMathInlineDecorations(state: EditorState): Decoration[] {
   const decos: Decoration[] = []
   const sel = state.selection
@@ -53,18 +62,26 @@ export function buildMathInlineDecorations(state: EditorState): Decoration[] {
           const el = document.createElement('span')
           el.className = 'pm-math-inline'
           const node = renderInline(r.raw)
+          const svg = node.querySelector('svg') as SVGElement | null
+          if (svg && svg.style.verticalAlign) {
+            el.style.verticalAlign = svg.style.verticalAlign
+          }
           el.appendChild(node)
           return el
         })
         decos.push(widget)
       } else {
-        const preview = Decoration.widget(to, () => {
+        const mid = from + Math.floor((to - from) / 2)
+        const preview = Decoration.widget(mid, () => {
+          const anchor = document.createElement('span')
+          anchor.className = 'pm-math-inline-anchor'
           const box = document.createElement('div')
           box.className = 'pm-math-inline-preview'
           const node = renderInline(r.raw)
           box.appendChild(node)
-          return box
-        }, { side: 1 })
+          anchor.appendChild(box)
+          return anchor
+        }, { side: 0 })
         decos.push(preview)
       }
     }

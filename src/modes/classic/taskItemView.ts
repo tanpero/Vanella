@@ -1,6 +1,13 @@
 import { EditorView, NodeView } from 'prosemirror-view'
 import { Node as PMNode } from 'prosemirror-model'
 
+/*
+  TaskItemView：GFM 任务清单复选项的 NodeView
+  - 将 list_item 的 attrs.checked 映射到复选框
+  - 勾选时写回节点属性并触发视图更新
+  - contentDOM 承载任务项的文本内容
+*/
+
 export class TaskItemView implements NodeView {
   node: PMNode
   view: EditorView

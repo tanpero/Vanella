@@ -10,6 +10,14 @@ import { stex } from '@codemirror/legacy-modes/mode/stex'
 import { useEditorStore } from '@/stores/editorStore'
 import { mapTheme } from '@/modes/shared/codemirrorConfig'
 
+/*
+  MathBlockView：LaTeX 数学块编辑与预览
+  - 使用 CodeMirror（stex）编辑纯文本公式；支持自动补全与括号匹配
+  - 公式环境 env 通过单选按钮选择，保存在节点 attrs 中，编辑区始终仅存 body
+  - 预览采用 MathJax 渲染，支持浅/深主题居中显示
+  - 根据焦点状态淡入/淡出编辑区与预览，改善 Typora 式编辑体验
+*/
+
 export class MathBlockView {
   node: PMNode
   view: PMEditorView
@@ -34,6 +42,7 @@ export class MathBlockView {
     this.view = view
     this.getPos = getPos
 
+    // 外层包裹元素与编辑行（gutter+CM）
     const wrapper = document.createElement('div')
     wrapper.className = 'pm-math-block'
     wrapper.style.display = 'block'
@@ -131,8 +140,6 @@ export class MathBlockView {
     box.style.display = 'none'
     box.style.padding = '6px 8px'
 
-    // remove env input field; use radio group only
-
     const envs = ['regular','equation','align','align*','gather','gather*','multline','split','cases']
     const radios = document.createElement('div')
     radios.className = 'pm-math-envs'
@@ -174,6 +181,7 @@ export class MathBlockView {
     box.appendChild(radios)
     this.radiosEl = radios
 
+    // 焦点进入显示环境选择栏，焦点移出尝试隐藏
     host.addEventListener('focusin', () => { box.style.display = 'block' })
     host.addEventListener('focusout', () => {
       setTimeout(() => {
@@ -217,7 +225,7 @@ export class MathBlockView {
       this.ensureAutofocus()
     }, 0)
     this.renderLineNumbers(gutter, node.textContent || '')
-    // detect env from pasted/raw content on init
+    // 初始化时探测是否包裹了 \begin{env}...\end{env}，若存在则拆出 body 并写回 attrs
     const initialText = cm.state.doc.toString()
     const det = this.detectOuterEnv(initialText)
     if (det) {
@@ -234,7 +242,7 @@ export class MathBlockView {
       this.schedulePreview(initialText, node.attrs?.env, 1)
     }
 
-    // clicking below should create a new empty line at tail
+    // 点击预览区域底部：在文档尾部插入一个空段，便于继续输入
     preview.addEventListener('click', () => {
       const pos = this.getPos()
       const end = pos + this.node.nodeSize
@@ -255,6 +263,7 @@ export class MathBlockView {
       this.cm?.focus()
     })
 
+    // 响应主题/代码主题切换：重建 CM 状态与样式，并重新渲染预览
     this.unsub = useEditorStore.subscribe((state, prev) => {
       const curDark = state.config.theme === 'dark'
       const prevDark = prev.config.theme === 'dark'
@@ -304,6 +313,7 @@ export class MathBlockView {
       const gutter = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
       if (gutter) this.renderLineNumbers(gutter, text)
     }
+    // 根据 store 的 autofocusMathPos 在创建后自动将光标定位到公式体
     this.ensureAutofocus()
     const active = document.activeElement as HTMLElement | null
     const inside = (!!this.cm?.hasFocus) || !!(active && this.dom.contains(active))
@@ -317,6 +327,7 @@ export class MathBlockView {
   destroy() { if (this.unsub) this.unsub(); this.cm?.destroy() }
 
   private schedulePreview(text: string, env?: string, delay = 0) {
+    // 预览调度：合成 raw（若有 env），在空闲或定时器中调用 MathJax 渲染
     const trimmed = (text || '').trim()
     const raw = env ? `\\begin{${env}} ${text} \\end{${env}}` : text
     if (!trimmed) {
@@ -369,14 +380,16 @@ export class MathBlockView {
       }
     }
     if (this.previewTimer) { clearTimeout(this.previewTimer) }
-    if ((window as any).requestIdleCallback && delay >= 100) {
-      this.previewTimer = (window as any).requestIdleCallback(() => { run() })
+    const w = window as unknown as { requestIdleCallback?: (cb: () => void) => number }
+    if (w.requestIdleCallback && delay >= 100) {
+      this.previewTimer = w.requestIdleCallback(() => { run() })
     } else {
       this.previewTimer = window.setTimeout(() => { run() }, Math.max(0, delay))
     }
   }
 
   private detectOuterEnv(text: string): { env: string, body: string } | null {
+    // 匹配完整的 \begin{env} ... \end{env} 包裹，并返回 env+内体
     const m = /^\s*\\begin\{([A-Za-z]+\*?)\}([\s\S]*?)\\end\{\1\}\s*$/.exec(text)
     if (!m) return null
     return { env: m[1], body: m[2] }
@@ -448,6 +461,7 @@ export class MathBlockView {
   }
 
   private ensureAutofocus() {
+    // 若 store 指定了自动聚焦位置，则将选区移动到块内部并聚焦 CM
     const { autofocusMathPos, setAutofocusMathPos } = useEditorStore.getState() as unknown as { autofocusMathPos: number | null; setAutofocusMathPos: (pos: number | null) => void }
     try {
       const pos = this.getPos()

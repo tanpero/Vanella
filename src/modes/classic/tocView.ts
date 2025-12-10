@@ -3,6 +3,13 @@ import type { EditorView as PMEditorView } from 'prosemirror-view'
 import { TextSelection } from 'prosemirror-state'
 import { useEditorStore } from '@/stores/editorStore'
 
+/*
+  TocView：目录块 NodeView
+  - 扫描文档顶层标题，生成可点击跳转的目录列表
+  - 目录块样式随主题调整边框颜色
+  - 通过全局数组 TOC_VIEWS 提供外部主动刷新（例如事务后重渲染）
+*/
+
 export const TOC_VIEWS: TocView[] = []
 
 type TocItem = { level: number; title: string; pos: number }
@@ -67,6 +74,7 @@ export class TocView {
     list.innerHTML = ''
     const items: TocItem[] = []
     const { doc } = this.view.state
+    // 收集顶层标题（h1~h6）作为目录项
     doc.forEach((node, offset) => {
       if (node.type.name === 'heading') {
         items.push({ level: node.attrs.level || 1, title: node.textContent || '', pos: offset + 1 })
@@ -86,6 +94,7 @@ export class TocView {
       row.style.marginLeft = `${(it.level - 1) * 12}px`
       row.textContent = it.title
       row.addEventListener('click', () => {
+        // 跳转到标题位置并平滑滚动到视口
         const tr = this.view.state.tr.setSelection(TextSelection.create(this.view.state.doc, it.pos))
         this.view.dispatch(tr)
         const el = this.view.domAtPos(it.pos).node as HTMLElement

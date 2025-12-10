@@ -1,6 +1,14 @@
 import { Schema } from 'prosemirror-model'
 import type { Node as PMNode, Mark as PMMark } from 'prosemirror-model'
 
+/*
+  Classic 模式的 ProseMirror Schema 定义
+  - 这里定义了文档结构、块级/内联节点以及常用标记（strong/em/code/link）
+  - 同时扩展了数学块、Mermaid、ABC 乐谱、目录（toc）等自定义节点
+  - toDOM/parseDOM 用于从 DOM 映射到 PM 节点与反向序列化，保证编辑与渲染一致
+  - attrs 用于保存节点的附加语义，例如标题等级、代码语言、任务项勾选状态等
+*/
+
 const nodes = {
   doc: { content: 'block+' },
   paragraph: {
@@ -17,6 +25,7 @@ const nodes = {
     toDOM: () => ['br'] as const,
     parseDOM: [{ tag: 'br' }]
   },
+  // 标题节点：通过 attrs.level 控制 h1~h6级别
   heading: {
     group: 'block',
     attrs: { level: { default: 1 } },
@@ -31,12 +40,14 @@ const nodes = {
       { tag: 'h6', attrs: { level: 6 } }
     ]
   },
+  // 引用块：包含一个或多个块级子节点
   blockquote: {
     group: 'block',
     content: 'block+',
     toDOM: () => ['blockquote', 0] as const,
     parseDOM: [{ tag: 'blockquote' }]
   },
+  // 代码块：纯文本、无标记；language 作为数据属性存储
   code_block: {
     group: 'block',
     content: 'text*',
@@ -46,6 +57,7 @@ const nodes = {
     toDOM: (node: PMNode) => ['pre', ['code', node.attrs.language ? { 'data-language': node.attrs.language } : {}, 0]] as const,
     parseDOM: [{ tag: 'pre', preserveWhitespace: 'full' as const }]
   },
+  // 有序列表/无序列表与列表项，支持任务清单（checked）
   ordered_list: {
     group: 'block',
     content: 'list_item+',
@@ -69,11 +81,13 @@ const nodes = {
       return { checked: val === 'true' }
     } }]
   },
+  // 水平分割线
   horizontal_rule: {
     group: 'block',
     toDOM: () => ['hr'] as const,
     parseDOM: [{ tag: 'hr' }]
   },
+  // 表格：支持列对齐信息 colalign；使用 tableRole 供插件识别
   table: {
     group: 'block',
     content: 'table_row+',
@@ -102,6 +116,7 @@ const nodes = {
     toDOM: () => ['th', 0] as const,
     parseDOM: [{ tag: 'th' }]
   },
+  // 数学块：文本内容+attrs（原始、环境、编号），无标记
   math_block: {
     group: 'block',
     content: 'text*',
@@ -111,6 +126,7 @@ const nodes = {
     parseDOM: [{ tag: 'div.pm-math-block' }]
   }
   , mermaid_block: {
+    // Mermaid 图表块：文本内容作为源码；theme 由属性控制
     group: 'block',
     content: 'text*',
     marks: '',
@@ -119,6 +135,7 @@ const nodes = {
     parseDOM: [{ tag: 'div.pm-mermaid-block' }]
   }
   , abc_block: {
+    // ABC 乐谱块：文本内容作为 ABC 记谱源码
     group: 'block',
     content: 'text*',
     marks: '',
@@ -126,6 +143,7 @@ const nodes = {
     parseDOM: [{ tag: 'div.pm-abc-block' }]
   }
   , toc_block: {
+    // 目录块：无内容，仅作为 NodeView 的占位与渲染锚点
     group: 'block',
     content: '',
     marks: '',
@@ -134,6 +152,7 @@ const nodes = {
   }
 }
 
+// 常用内联标记：加粗、斜体、代码、链接
 const marks = {
   strong: { toDOM: () => ['strong', 0] as const, parseDOM: [{ tag: 'strong' }, { tag: 'b', getAttrs: () => ({}) }] },
   em: { toDOM: () => ['em', 0] as const, parseDOM: [{ tag: 'em' }, { tag: 'i', getAttrs: () => ({}) }] },
@@ -146,6 +165,7 @@ const marks = {
   }
 }
 
+// 以图片作为内联节点：允许直接在文档中编辑 alt/src/title
 ; (nodes as unknown as Record<string, unknown>).image = {
   inline: true,
   group: 'inline',
@@ -155,4 +175,5 @@ const marks = {
   parseDOM: [{ tag: 'img', getAttrs: (el: Element) => ({ src: el.getAttribute('src') || '', alt: el.getAttribute('alt') || null, title: el.getAttribute('title') || null }) }]
 }
 
+// 导出统一的 Schema，供 ClassicEditor 初始化使用
 export const schema = new Schema({ nodes, marks })

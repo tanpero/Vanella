@@ -9,6 +9,14 @@ import { useEditorStore } from '@/stores/editorStore'
 import { mapTheme } from '@/modes/shared/codemirrorConfig'
 import mermaid from 'mermaid'
 
+/*
+  MermaidBlockView：Mermaid 图表源码编辑与预览
+  - 使用 CodeMirror 编辑图表源码，下方预览采用 mermaid.render
+  - 根据主题（浅/深）动态初始化 mermaid 主题
+  - 预览/编辑区随焦点与内容淡入/淡出，空内容时隐藏预览
+  - 异常时显示错误盒，提示行号等信息以便定位
+*/
+
 export class MermaidBlockView {
   node: PMNode
   view: PMEditorView
@@ -121,7 +129,7 @@ export class MermaidBlockView {
     this.preview = preview
     this.rowEl = row
 
-    // initial visibility: show preview if has content, editor starts focused
+    // 若已有源码则显示预览，否则仅显示编辑
     row.style.display = 'flex'
     const initialSrc = cm.state.doc.toString().trim()
     if (initialSrc.length) {
@@ -133,7 +141,7 @@ export class MermaidBlockView {
     }
     setTimeout(() => { this.cm?.focus() }, 0)
 
-    // initialize mermaid theme
+    // 初始化 mermaid 主题与预览容器
     mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' })
     const container = document.createElement('div')
     container.style.display = 'inline-block'
@@ -174,6 +182,7 @@ export class MermaidBlockView {
       this.cm?.focus()
     })
 
+    // 响应主题/代码主题变化：更新 CM 与 mermaid 渲染
     this.unsub = useEditorStore.subscribe((state, prev) => {
       const curDark = state.config.theme === 'dark'
       const prevDark = prev.config.theme === 'dark'
@@ -220,7 +229,7 @@ export class MermaidBlockView {
       const gutter = this.dom.querySelector('.pm-code-gutter') as HTMLDivElement
       if (gutter) this.renderLineNumbers(gutter, text)
     }
-    // toggle editor visibility by selection; keep editor visible when empty
+    // 根据选区与内容切换编辑区/预览的可见性；空内容时保留编辑区
     const hasSrc = (text.trim().length > 0)
     const inside = this.isSelectionInside()
     const row = this.rowEl
@@ -250,6 +259,7 @@ export class MermaidBlockView {
   }
 
   private async renderDiagram(code: string) {
+    // 渲染 Mermaid：解析源码，生成 SVG 放入容器；错误时提供提示
     try {
       const id = 'mermaid-' + Math.random().toString(36).slice(2)
       const isDark = useEditorStore.getState().config.theme === 'dark'

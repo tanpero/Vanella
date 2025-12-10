@@ -1,89 +1,340 @@
+/*
+  编辑器主体样式（Classic 模式）
+  - 该文件为 ProseMirror 编辑区域的基础排版与各类 NodeView/装饰的视觉规范
+  - 深/浅主题通过父级容器类名（.pm-editor.dark / .pm-editor.light）进行差异化控制
+  - 相关类由 ClassicEditor、NodeView 与 Decorations 挂载，例如：
+    * 内联标记样式：.pm-inline-strong / .pm-inline-em / .pm-inline-code
+    * 隐藏标记：.pm-marker-hidden（将 Markdown 标记在非编辑态下隐藏）
+    * 标题/引用/代码块的“语法标记”：.pm-heading-lX / .pm-blockquote-marker / .pm-codeblock-marker
+    * 数学行内/块预览：.pm-math-inline / .pm-math-inline-preview / .pm-math-block-preview
+    * 任务清单与图片交互：.pm-task-item / .pm-image-wrap / .pm-image-markers / .pm-image-caption
+*/
 .pm-editor {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   line-height: 1.7;
   color: #1f2937;
 }
-.pm-editor.dark { color: #e5e7eb; }
+.pm-editor.dark {
+  color: #e5e7eb;
+}
 
-.pm-editor h1 { font-size: 2rem; font-weight: 700; margin: 1.2rem 0 .6rem; border-bottom: 2px solid #e5e7eb; padding-bottom: .3rem; }
-.pm-editor.dark h1 { border-bottom-color: #374151; }
-.pm-editor h2 { font-size: 1.6rem; font-weight: 600; margin: 1rem 0 .5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: .25rem; }
-.pm-editor.dark h2 { border-bottom-color: #374151; }
-.pm-editor h3 { font-size: 1.3rem; font-weight: 600; margin: .9rem 0 .4rem; }
-.pm-editor h4 { font-size: 1.1rem; font-weight: 600; margin: .8rem 0 .4rem; }
-.pm-editor h5 { font-size: 1rem; font-weight: 600; margin: .8rem 0 .4rem; }
-.pm-editor h6 { font-size: .9rem; font-weight: 600; margin: .8rem 0 .4rem; color: #6b7280; }
-.pm-editor.dark h6 { color: #9ca3af; }
+.pm-editor h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 1.2rem 0 0.6rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.3rem;
+}
+.pm-editor h1 {
+  /* 顶级标题：更大字号、加粗、下边框以突出章节 */
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 1.2rem 0 0.6rem;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.3rem;
+}
+.pm-editor.dark h1 {
+  border-bottom-color: #374151;
+}
+.pm-editor h2 {
+  /* 二级标题：次要边框强调 */
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.25rem;
+}
+.pm-editor.dark h2 {
+  border-bottom-color: #374151;
+}
+.pm-editor h3 {
+  /* 三级及以下标题：减少视觉重量，维持层级清晰 */
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 0.9rem 0 0.4rem;
+}
+.pm-editor h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.8rem 0 0.4rem;
+}
+.pm-editor h5 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.8rem 0 0.4rem;
+}
+.pm-editor h6 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.8rem 0 0.4rem;
+  color: #6b7280;
+}
+.pm-editor.dark h6 {
+  color: #9ca3af;
+}
 
-.pm-editor p { margin: .8rem 0; }
-.pm-editor ul, .pm-editor ol { margin: .8rem 0; padding-left: 2rem; }
-.pm-editor ul { list-style: disc; }
-.pm-editor ol { list-style: decimal; }
-.pm-editor li { margin: .3rem 0; }
+.pm-editor p {
+  /* 段落：统一上下间距 */
+  margin: 0.8rem 0;
+}
+.pm-editor ul,
+.pm-editor ol {
+  /* 列表：左侧缩进与统一上下间距 */
+  margin: 0.8rem 0;
+  padding-left: 2rem;
+}
+.pm-editor ul {
+  list-style: disc;
+}
+.pm-editor ol {
+  list-style: decimal;
+}
+.pm-editor li {
+  margin: 0.3rem 0;
+}
 
-.pm-editor blockquote { margin: 1rem 0; padding: .2rem .9rem; border-left: 4px solid #e5e7eb; background: #f9fafb; color: #4b5563; font-style: italic; }
-.pm-editor.dark blockquote { border-left-color: #374151; background: rgba(55,65,81,.2); color: #d1d5db; }
+.pm-editor blockquote {
+  /* 引用块：左边框与淡背景、斜体以区分正文 */
+  margin: 1rem 0;
+  padding: 0.2rem 0.9rem;
+  border-left: 4px solid #e5e7eb;
+  background: #f9fafb;
+  color: #4b5563;
+  font-style: italic;
+}
+.pm-editor.dark blockquote {
+  border-left-color: #374151;
+  background: rgba(55, 65, 81, 0.2);
+  color: #d1d5db;
+}
 
-.pm-editor code { background: #f3f4f6; padding: .2rem .4rem; border-radius: 4px; font-family: Consolas, Monaco, monospace; font-size: .9em; }
-.pm-editor.dark code { background: #374151; }
-.pm-editor em { font-style: italic; }
-.pm-editor strong { font-weight: 600; }
-.pm-editor pre { background: #111827; color: #e5e7eb; padding: 1rem; border-radius: 8px; overflow-x: auto; border: 1px solid #374151; }
-.pm-editor.light pre { background: #f8f9fa; color: #1f2937; border-color: #e5e7eb; }
-.pm-editor pre code { background: transparent; padding: 0; }
+.pm-editor code {
+  /* 行内代码：浅底色与等宽字体，略微缩小字号 */
+  background: #f3f4f6;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.9em;
+}
+.pm-editor.dark code {
+  background: #374151;
+}
+.pm-editor em {
+  font-style: italic;
+}
+.pm-editor strong {
+  font-weight: 600;
+}
+.pm-editor pre {
+  /* 代码块：深底/浅底随主题切换，圆角与横向滚动 */
+  background: #111827;
+  color: #e5e7eb;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  border: 1px solid #374151;
+}
+.pm-editor.light pre {
+  background: #f8f9fa;
+  color: #1f2937;
+  border-color: #e5e7eb;
+}
+.pm-editor pre code {
+  background: transparent;
+  padding: 0;
+}
 
-.pm-editor hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
-.pm-editor.dark hr { border-top-color: #374151; }
+.pm-editor hr {
+  /* 水平分割线：统一边距与色值 */
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.5rem 0;
+}
+.pm-editor.dark hr {
+  border-top-color: #374151;
+}
 
-.pm-editor a { color: #2563eb; text-decoration: none; }
-.pm-editor a:hover { text-decoration: underline; }
+.pm-editor a {
+  /* 链接：品牌色强调，hover 下划线 */
+  color: #2563eb;
+  text-decoration: none;
+}
+.pm-editor a:hover {
+  text-decoration: underline;
+}
 
-/* Tables */
-.pm-editor table { border-collapse: collapse; width: 80%; margin: .8rem auto; }
-.pm-editor th, .pm-editor td { border: 1px solid #e5e7eb; padding: .5rem .6rem; text-align: left; }
-.pm-editor.dark th, .pm-editor.dark td { border-color: #374151; }
-.pm-editor tbody tr:nth-child(odd) { background: #f9fafb; }
-.pm-editor.dark tbody tr:nth-child(odd) { background: rgba(55,65,81,.2); }
-.pm-editor th { background: #f3f4f6; font-weight: 600; }
-.pm-editor.dark th { background: #1f2937; }
+/*
+  表格：与 Markdown/PM 的 table 节点对应
+  - 使用合并边框模式
+  - 默认宽度居中（80%），提升阅读性
+  - 奇行底色，表头视觉强化
+  - 列对齐（text-align）通过 TableToolbar 同步应用
+*/
+.pm-editor table {
+  border-collapse: collapse;
+  width: 80%;
+  margin: 0.8rem auto;
+}
+.pm-editor th,
+.pm-editor td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+}
+.pm-editor.dark th,
+.pm-editor.dark td {
+  border-color: #374151;
+}
+.pm-editor tbody tr:nth-child(odd) {
+  background: #f9fafb;
+}
+.pm-editor.dark tbody tr:nth-child(odd) {
+  background: rgba(55, 65, 81, 0.2);
+}
+.pm-editor th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+.pm-editor.dark th {
+  background: #1f2937;
+}
 
-.pm-editor img { max-width: 70%; height: auto; border-radius: 8px; display: block; margin: .6rem auto; }
+.pm-editor img {
+  /* 图片：居中显示，限制宽度，圆角 */
+  max-width: 70%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  margin: 0.6rem auto;
+}
 
-html, body { height: 100%; overflow: hidden; }
+html,
+body {
+  /* 页面锁滚；内部容器 .pm-shell 控制滚动 */
+  height: 100%;
+  overflow: hidden;
+}
 
 .pm-shell {
+  /* 编辑器挂载的滚动容器（ClassicEditor 外层 div） */
   border: none;
   border-radius: 0;
   background: transparent;
 }
-.pm-shell.dark { border: none; background: transparent; }
-.pm-strong-marker { position: relative; }
-.pm-strong-marker::before { content: '**'; opacity: .6; margin-right: 4px; }
-.pm-strong-marker::after { content: '**'; opacity: .6; margin-left: 4px; }
+.pm-shell.dark {
+  border: none;
+  background: transparent;
+}
+.pm-strong-marker {
+  /* 旧版内联强标记的伪元素显示（保留兼容） */
+  position: relative;
+}
+.pm-strong-marker::before {
+  content: "**";
+  opacity: 0.6;
+  margin-right: 4px;
+}
+.pm-strong-marker::after {
+  content: "**";
+  opacity: 0.6;
+  margin-left: 4px;
+}
 
-.pm-em-marker { position: relative; }
-.pm-em-marker::before { content: '*'; opacity: .6; margin-right: 3px; }
-.pm-em-marker::after { content: '*'; opacity: .6; margin-left: 3px; }
+.pm-em-marker {
+  /* 旧版斜体标记伪元素显示（保留兼容） */
+  position: relative;
+}
+.pm-em-marker::before {
+  content: "*";
+  opacity: 0.6;
+  margin-right: 3px;
+}
+.pm-em-marker::after {
+  content: "*";
+  opacity: 0.6;
+  margin-left: 3px;
+}
 
-.pm-code-marker { position: relative; }
-.pm-code-marker::before { content: '`'; opacity: .6; margin-right: 2px; }
-.pm-code-marker::after { content: '`'; opacity: .6; margin-left: 2px; }
+.pm-code-marker {
+  /* 旧版行内代码标记伪元素显示（保留兼容） */
+  position: relative;
+}
+.pm-code-marker::before {
+  content: "`";
+  opacity: 0.6;
+  margin-right: 2px;
+}
+.pm-code-marker::after {
+  content: "`";
+  opacity: 0.6;
+  margin-left: 2px;
+}
 
-.pm-heading-l1::before { content: '# '; opacity: .5; margin-right: 4px; }
-.pm-heading-l2::before { content: '## '; opacity: .5; margin-right: 4px; }
-.pm-heading-l3::before { content: '### '; opacity: .5; margin-right: 4px; }
+.pm-heading-l1::before {
+  /* 标题语法标记（由 Decorations 添加） */
+  content: "# ";
+  opacity: 0.5;
+  margin-right: 4px;
+}
+.pm-heading-l2::before {
+  content: "## ";
+  opacity: 0.5;
+  margin-right: 4px;
+}
+.pm-heading-l3::before {
+  content: "### ";
+  opacity: 0.5;
+  margin-right: 4px;
+}
 
-.pm-blockquote-marker::before { content: '> '; opacity: .5; margin-right: 4px; }
-.pm-codeblock-marker::before { content: '```'; opacity: .5; display: inline-block; margin-right: 4px; }
-.pm-codeblock-marker::after { content: '```'; opacity: .5; display: inline-block; margin-left: 4px; }
+.pm-blockquote-marker::before {
+  /* 引用语法标记（>） */
+  content: "> ";
+  opacity: 0.5;
+  margin-right: 4px;
+}
+.pm-codeblock-marker::before {
+  content: "```";
+  opacity: 0.5;
+  display: inline-block;
+  margin-right: 4px;
+}
+.pm-codeblock-marker::after {
+  content: "```";
+  opacity: 0.5;
+  display: inline-block;
+  margin-left: 4px;
+}
 
-.ProseMirror:focus { outline: none; }
-.ProseMirror-focused { outline: none; }
-.pm-shell { overflow: auto; }
-.pm-inline-strong { font-weight: 600; }
-.pm-inline-em { font-style: italic; }
-.pm-inline-code { background: #f3f4f6; border-radius: 4px; font-family: Consolas, Monaco, monospace; padding: .1rem .25rem; }
-.pm-marker-hidden { 
+.ProseMirror:focus {
+  /* 去除默认焦点描边 */
+  outline: none;
+}
+.ProseMirror-focused {
+  outline: none;
+}
+.pm-shell {
+  /* 允许编辑器内容滚动 */
+  overflow: auto;
+}
+.pm-inline-strong {
+  /* 内联内容区样式（加粗） */
+  font-weight: 600;
+}
+.pm-inline-em {
+  /* 内联内容区样式（斜体） */
+  font-style: italic;
+}
+.pm-inline-code {
+  /* 内联内容区样式（代码） */
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-family: Consolas, Monaco, monospace;
+  padding: 0.1rem 0.25rem;
+}
+.pm-marker-hidden {
+  /* 隐藏 Markdown 标记：通过零宽与不可点击实现 */
   display: inline-block !important;
   font-size: 0 !important;
   width: 0 !important;
@@ -91,76 +342,232 @@ html, body { height: 100%; overflow: hidden; }
   pointer-events: none !important;
   vertical-align: baseline !important;
 }
-.pm-math-inline { display: inline-block; margin-left: 6px; vertical-align: baseline; }
-.pm-math-inline-preview { display: inline-block; margin-left: 6px; padding: 6px 8px; border-radius: 8px; border: 1px solid #e5e7eb; background: transparent; box-shadow: 0 2px 6px rgba(0,0,0,.06); }
-.pm-editor.dark .pm-math-inline-preview { border-color: #374151; background: transparent; }
-.pm-math-error { color: #dc2626; font-size: .9em; background: transparent !important; }
-.pm-math-inline-preview mjx-container, .pm-math-block-preview mjx-container { background: transparent !important; }
-.pm-math-inline-preview svg, .pm-math-block-preview svg { background: transparent !important; }
-.pm-math-inline mjx-container, .pm-math-inline svg { background: transparent !important; }
-.pm-math-inline mjx-container rect[data-background], .pm-math-inline-preview mjx-container rect[data-background], .pm-math-block-preview mjx-container rect[data-background] { fill: transparent !important; stroke: transparent !important; }
-.pm-math-inline [data-mml-node="merror"], .pm-math-inline-preview [data-mml-node="merror"], .pm-math-block-preview [data-mml-node="merror"] { color: #dc2626 !important; }
-.pm-math-block { border-radius: 8px; overflow: hidden; margin: .8rem 0; }
-.pm-editor.dark .pm-math-block { border-color: #374151; }
-.pm-math-block-preview { background: transparent; }
-.pm-editor.dark .pm-math-block-preview { background: transparent; }
-.pm-math-error { background: transparent; }
-.pm-block-editor-row { transition: opacity .2s ease, transform .2s ease; will-change: opacity, transform; }
-.pm-block-editor-row-hidden { opacity: 0; transform: translateY(-2px); }
-.pm-block-preview { transition: opacity .2s ease, transform .2s ease; will-change: opacity, transform; }
-.pm-block-preview-hidden { opacity: 0; transform: translateY(-2px); }
-.pm-math-envs label { font-size: .85em; color: #4b5563; }
-.pm-editor.dark .pm-math-envs label { color: #9ca3af; }
+.pm-math-inline {
+  /* 行内数学的 SVG 预览容器 */
+  display: inline-block;
+  margin: 0 2px;
+  vertical-align: baseline;
+}
+.pm-math-inline-anchor {
+  /* 选中态下的预览锚点（零宽占位） */
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 0;
+  line-height: 0;
+  vertical-align: baseline;
+}
+.pm-math-inline-preview {
+  /* 行内数学悬浮预览气泡（深色底） */
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%) translateY(-24px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #111827;
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+  z-index: 20;
+}
+.pm-math-inline-preview {
+  pointer-events: none;
+}
+.ProseMirror-separator {
+  display: inline-block !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  border: 0 !important;
+}
+.pm-math-inline-preview::after {
+  /* 箭头 */
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: #111827 transparent transparent transparent;
+}
+.pm-editor.dark .pm-math-inline-preview {
+  background: #111827;
+  color: #ffffff;
+}
+.pm-math-error {
+  /* 数学渲染错误提示（红色） */
+  color: #dc2626;
+  font-size: 0.9em;
+  background: transparent !important;
+}
+.pm-math-inline-preview mjx-container,
+.pm-math-block-preview mjx-container {
+  background: transparent !important;
+}
+.pm-math-inline-preview mjx-container {
+  color: #ffffff !important;
+}
+.pm-math-inline-preview svg,
+.pm-math-block-preview svg {
+  background: transparent !important;
+}
+.pm-math-inline mjx-container,
+.pm-math-inline svg {
+  background: transparent !important;
+}
+.pm-math-inline mjx-container rect[data-background],
+.pm-math-inline-preview mjx-container rect[data-background],
+.pm-math-block-preview mjx-container rect[data-background] {
+  fill: transparent !important;
+  stroke: transparent !important;
+}
+.pm-math-inline [data-mml-node="merror"],
+.pm-math-inline-preview [data-mml-node="merror"],
+.pm-math-block-preview [data-mml-node="merror"] {
+  color: #dc2626 !important;
+}
+.pm-math-block {
+  /* 数学块容器：圆角与上下间距；编辑区/预览切换由 NodeView 控制 */
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0.8rem 0;
+}
+.pm-editor.dark .pm-math-block {
+  border-color: #374151;
+}
+.pm-math-block-preview {
+  /* 块预览容器：透明背景，MathJax 自带填充 */
+  background: transparent;
+}
+.pm-editor.dark .pm-math-block-preview {
+  background: transparent;
+}
+.pm-math-error {
+  background: transparent;
+}
+.pm-block-editor-row {
+  /* 块编辑行（gutter + 编辑器）淡入淡出动画 */
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  will-change: opacity, transform;
+}
+.pm-block-editor-row-hidden {
+  opacity: 0;
+  transform: translateY(-2px);
+}
+.pm-block-preview {
+  /* 块预览区淡入淡出动画 */
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  will-change: opacity, transform;
+}
+.pm-block-preview-hidden {
+  opacity: 0;
+  transform: translateY(-2px);
+}
+.pm-math-envs label {
+  /* 数学环境单选标签的字体与色值 */
+  font-size: 0.85em;
+  color: #4b5563;
+}
+.pm-editor.dark .pm-math-envs label {
+  color: #9ca3af;
+}
 
-.pm-task-item { list-style: none; display: flex; align-items: flex-start; gap: 8px; }
-.pm-task-item input[type="checkbox"] { 
-  margin-top: .3rem; 
-  appearance: none; 
-  -webkit-appearance: none; 
-  width: 20px; 
-  height: 20px; 
-  border-radius: 4px; 
-  border: 2px solid #9ca3af; 
-  background: #ffffff; 
-  display: inline-block; 
-  position: relative; 
-  transition: background-color .2s, border-color .2s; 
+.pm-task-item {
+  /* 任务清单项：复选框 + 文本内容 */
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.pm-editor.dark .pm-task-item input[type="checkbox"] { 
-  border-color: #6b7280; 
-  background: #0b1220; 
+.pm-task-item input[type="checkbox"] {
+  margin-top: 0;
+  vertical-align: middle;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid #9ca3af;
+  background: #ffffff;
+  display: inline-block;
+  position: relative;
+  transition: background-color 0.2s, border-color 0.2s;
 }
-.pm-editor.light .pm-task-item input[type="checkbox"]:checked { 
-  background: #2563eb; 
-  border-color: #2563eb; 
+.pm-editor.dark .pm-task-item input[type="checkbox"] {
+  border-color: #6b7280;
+  background: #0b1220;
 }
-.pm-editor.dark .pm-task-item input[type="checkbox"]:checked { 
-  background: #60a5fa; 
-  border-color: #60a5fa; 
+.pm-editor.light .pm-task-item input[type="checkbox"]:checked {
+  background: #2563eb;
+  border-color: #2563eb;
 }
-.pm-task-item input[type="checkbox"]:checked::after { 
-  content: ""; 
-  position: absolute; 
-  top: 3px; 
-  left: 6px; 
-  width: 6px; 
-  height: 10px; 
-  border: solid #ffffff; 
-  border-width: 0 2px 2px 0; 
-  transform: rotate(45deg); 
+.pm-editor.dark .pm-task-item input[type="checkbox"]:checked {
+  background: #60a5fa;
+  border-color: #60a5fa;
 }
-.pm-task-item input[type="checkbox"]:focus { outline: none; box-shadow: 0 0 0 3px rgba(37,99,235,.2); }
-.pm-task-content { flex: 1; }
-.pm-image-wrap { margin: .8rem 0; }
-.pm-image-markers { display: inline; font-family: Consolas, Monaco, monospace; background: #f3f4f6; border-radius: 6px; padding: 4px 6px; }
-.pm-editor.dark .pm-image-markers { background: #374151; }
-.pm-image-caption { text-align: center; font-size: .9em; color: #6b7280; margin-top: .3rem; }
-.pm-editor.dark .pm-image-caption { color: #9ca3af; }
+.pm-task-item input[type="checkbox"]:checked::after {
+  /* 勾选后的对勾 */
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 6px;
+  width: 6px;
+  height: 10px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.pm-task-item input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+.pm-task-content {
+  flex: 1;
+}
+.pm-image-wrap {
+  /* 图片 NodeView 外层容器 */
+  margin: 0.8rem 0;
+}
+.pm-image-markers {
+  /* 图片可视标记（![alt](src)）的背景与字体 */
+  display: inline;
+  font-family: Consolas, Monaco, monospace;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.pm-editor.dark .pm-image-markers {
+  background: #374151;
+}
+.pm-image-caption {
+  /* 图片下方说明（取 alt 作为说明文案） */
+  text-align: center;
+  font-size: 0.9em;
+  color: #6b7280;
+  margin-top: 0.3rem;
+}
+.pm-editor.dark .pm-image-caption {
+  color: #9ca3af;
+}
 /* keep editor/container scrollable while page is locked */
 /* .pm-shell already has overflow:auto above */
 
-/* Search highlights */
-.pm-search-hit { background: #fde68a; }
-.cm-search-hit { background: #fde68a; }
-.pm-search-hit-active { background: #fb923c; }
-.cm-search-hit-active { background: #fb923c; }
+/*
+  搜索高亮类：由 ClassicEditor 的搜索插件添加
+  - pm- 前缀用于 PM 文本节点，cm- 前缀用于 CodeMirror 编辑区
+  - active 类用于当前命中项的更强突出
+*/
+.pm-search-hit {
+  background: #fde68a;
+}
+.cm-search-hit {
+  background: #fde68a;
+}
+.pm-search-hit-active {
+  background: #fb923c;
+}
+.cm-search-hit-active {
+  background: #fb923c;
+}

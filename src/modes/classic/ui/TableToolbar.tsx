@@ -4,8 +4,15 @@ import type { EditorState } from 'prosemirror-state'
 import { TextSelection } from 'prosemirror-state'
 import { addRowAfter, addRowBefore, addColumnAfter, addColumnBefore, deleteRow, deleteColumn } from 'prosemirror-tables'
 
-// removed: inTable helper (no longer needed with right-click trigger)
+/*
+  表格上下文菜单工具栏
+  - 通过右键触发，自动锚定到当前表格位置并显示操作
+  - 行/列增删操作由 prosemirror-tables 提供
+  - 支持设置当前列对齐（left/center/right），写回到 table.attrs.colalign
+  - 同步 DOM 单元格样式以即时反馈
+*/
 
+// 查找当前选区所在的表格节点、其位置以及列索引
 function getTableInfo(state: EditorState) {
   const $pos = state.selection.$from
   let tableDepth = -1
@@ -33,6 +40,7 @@ export default function TableToolbar() {
 
   useEffect(() => {
     if (!pmView) return
+    // 将对齐设置应用到当前表格的每个单元格（考虑 colspan）
     const applyDomAlign = (tableEl: HTMLElement, aligns: Array<'left'|'center'|'right'>) => {
       const rows = Array.from(tableEl.querySelectorAll('tr'))
       rows.forEach(row => {
@@ -66,6 +74,7 @@ export default function TableToolbar() {
     const origDispatch = pmView.dispatch
     pmView.dispatch = (tr) => { origDispatch.call(pmView, tr); onUpdate() }
 
+    // 右键显示上下文菜单，并将选区移动到所点单元格
     const handleContextMenu = (ev: MouseEvent) => {
       const target = ev.target as HTMLElement
       const tableEl = target?.closest('table') as HTMLElement | null
@@ -103,8 +112,9 @@ export default function TableToolbar() {
     }
     pmView.dom.addEventListener('contextmenu', handleContextMenu)
 
+    // 滚动/尺寸变化时调整菜单位置以跟随表格
     const onScroll = () => {
-      // adjust position when visible
+      // 出现时调整位置以免跑到窗口可视范围以外
       if (!visible) return
       const st = pmView.state
       const info = getTableInfo(st)
@@ -136,6 +146,7 @@ export default function TableToolbar() {
   const state = pmView.state
   const info = getTableInfo(state)
 
+  // 设置当前列对齐并写回到 table.attrs.colalign，同时更新 DOM
   const setAlign = (next: 'left'|'center'|'right') => {
     if (!info) return
     const aligns = (info.tableNode.attrs?.colalign || []) as Array<'left'|'center'|'right'>

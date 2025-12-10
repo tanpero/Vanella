@@ -2,6 +2,14 @@ import { EditorView, NodeView } from 'prosemirror-view'
 import { Node as PMNode } from 'prosemirror-model'
 import { useEditorStore } from '@/stores/editorStore'
 
+/*
+  ImageView：图片内联 NodeView
+  - 显示并允许直接编辑 Markdown 样式的图片标记（![alt](src)）
+  - 输入/失焦时将 alt/src 写回节点 attrs，实时更新图片与下方说明
+  - 根据配置在图片下方居中显示说明（alt）
+  - 点击图片区域显示标记，点击文档其他处隐藏
+*/
+
 export class ImageView implements NodeView {
   node: PMNode
   view: EditorView
@@ -89,6 +97,7 @@ export class ImageView implements NodeView {
     }
     document.addEventListener('mousedown', this.onDocMouseDown, { capture: true })
 
+    // 将标记编辑的更改提交到节点属性
     const commit = () => {
       const pos = this.getPos()
       const nextAlt = mAlt.textContent || ''
@@ -116,6 +125,7 @@ export class ImageView implements NodeView {
   }
 
   toggleMarkers(show: boolean) {
+    // 切换是否显示 Markdown 图片标记
     this.showMarkers = show
     this.markersEl.style.display = show ? 'inline' : 'none'
   }
