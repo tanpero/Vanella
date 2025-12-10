@@ -546,37 +546,26 @@ export default function ClassicEditor() {
                 }
                 , paste: (view, event: ClipboardEvent) => {
                   const text = event.clipboardData?.getData('text/plain') || ''
-                  const m = /^\$\$\s*\n([\s\S]*?)\n\$\$\s*$/.exec(text)
-                  if (m) {
-                    event.preventDefault()
-                    const raw = m[1] || ''
-                    const node = schema.nodes.math_block.create({}, schema.text(raw))
-                    const tr = view.state.tr.replaceSelectionWith(node, false)
-                    view.dispatch(tr)
-                    return true
-                  }
+                  const html = event.clipboardData?.getData('text/html') || ''
                   if (!text) return false
-                  const likelyMd = /(^|\n)\s*(#{1,6}\s)|(^|\n)\s*[-*+]\s|(^|\n)\s*\d+\.\s|(^|\n)\s*>\s|```|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|(^|\n)\s*---\s*$|(^|\n)\s*\|/.test(text)
-                  if (likelyMd) {
-                    event.preventDefault()
-                    const sc = view.state.schema
-                    ;(async () => {
-                      try {
-                        const doc = await markdownToPmDoc(sc, text)
-                        const children: PMNode[] = []
-                        doc.forEach(n => { children.push(n as PMNode) })
-                        let tr = view.state.tr.deleteSelection()
-                        const pos = tr.selection.$from.pos
-                        tr = tr.insert(pos, children)
-                        view.dispatch(tr)
-                      } catch {
-                        const tr = view.state.tr.replaceSelectionWith(view.state.schema.text(text), false)
-                        view.dispatch(tr)
-                      }
-                    })()
-                    return true
-                  }
-                  return false
+                  if (html && html.trim().length > 0) return false
+                  event.preventDefault()
+                  ;(async () => {
+                    try {
+                      const sc = view.state.schema
+                      const doc = await markdownToPmDoc(sc, text)
+                      const children: PMNode[] = []
+                      doc.forEach(n => { children.push(n as PMNode) })
+                      let tr = view.state.tr.deleteSelection()
+                      const pos = tr.selection.$from.pos
+                      tr = tr.insert(pos, children)
+                      view.dispatch(tr)
+                    } catch {
+                      const tr = view.state.tr.replaceSelectionWith(view.state.schema.text(text), false)
+                      view.dispatch(tr)
+                    }
+                  })()
+                  return true
                 }
                 , input: (view, event: InputEvent) => {
                   const target = event.target as HTMLElement

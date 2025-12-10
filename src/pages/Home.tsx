@@ -22,7 +22,6 @@ export default function Home() {
     setActiveFile, 
     addTab, 
     toggleSettings,
-    togglePreview,
     insertMarkdownSyntax 
   } = useEditorStore()
   
@@ -230,9 +229,7 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
     } catch (e) { console.warn(e) }
   }
   
-  const handleTogglePreview = () => {
-    togglePreview()
-  }
+  
   
   const handleExportMarkdown = () => {
     if (activeFile?.content) {
@@ -328,7 +325,7 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
       </div>
       
       {/* Status Bar */}
-      <StatusBar onTogglePreview={handleTogglePreview} />
+      <StatusBar />
       <ProgressOverlay />
       
       {/* Settings Panel */}

@@ -76,9 +76,7 @@ interface EditorStore {
   confirmInsertTable: (rows: number, cols: number, header: boolean, aligns: Array<'left'|'center'|'right'>) => void
   runSourceTableCommand?: (cmd: 'row_add_above'|'row_add_below'|'col_add_left'|'col_add_right'|'row_delete'|'col_delete') => void
 
-  // Preview toggle
-  previewVisible: boolean
-  togglePreview: () => void
+  
 
   // Editor ref and markdown helpers
   editorRef: { insertSyntax: (syntax: string, placeholder?: string) => void; selectRange?: (from: number, to: number) => void } | null
@@ -413,8 +411,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({ imageCardVisible: false })
   },
   
-  previewVisible: true,
-  togglePreview: () => set((state) => ({ previewVisible: !state.previewVisible })),
+  
 
   tableDialogVisible: false,
   tableDialogX: 0,

@@ -3,20 +3,17 @@ import {
   FileText, 
   MousePointer,
   Type,
-  Clock,
-  Eye,
-  EyeOff
+  Clock
 } from 'lucide-react'
 import { useEditorStore } from '@/stores/editorStore'
 import { getWordCount, getCharacterCount, getLineCount } from '@/utils/markdown'
 
 interface StatusBarProps {
   className?: string
-  onTogglePreview?: () => void
 }
 
-export default function StatusBar({ className = '', onTogglePreview }: StatusBarProps) {
-  const { activeFile, editorState, config, previewVisible, editorMode, setEditorMode } = useEditorStore()
+export default function StatusBar({ className = '' }: StatusBarProps) {
+  const { activeFile, editorState, config, editorMode, setEditorMode } = useEditorStore()
   
   const isDarkTheme = config.theme === 'dark'
   
@@ -123,32 +120,6 @@ export default function StatusBar({ className = '', onTogglePreview }: StatusBar
             <span>{editorMode === 'classic' ? 'Classic' : 'Source'}</span>
           </button>
         </div>
-        <button
-          onClick={onTogglePreview}
-          title={previewVisible ? "Hide Preview" : "Show Preview"}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            border: 'none',
-            backgroundColor: 'transparent',
-            color: isDarkTheme ? '#d1d5db' : '#6b7280',
-            cursor: 'pointer',
-            fontSize: '12px',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            transition: 'background-color 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = isDarkTheme ? '#374151' : '#e5e7eb'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent'
-          }}
-        >
-          {previewVisible ? <EyeOff size={14} /> : <Eye size={14} />}
-          <span>{previewVisible ? 'Hide Preview' : 'Show Preview'}</span>
-        </button>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Clock size={14} />

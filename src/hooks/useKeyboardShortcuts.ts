@@ -7,7 +7,6 @@ export const useKeyboardShortcuts = () => {
     insertMarkdownSyntax, 
     newFile, 
     saveFile, 
-    togglePreview, 
     toggleSettings,
     openFindToolbar,
     openReplaceToolbar,
@@ -70,10 +69,7 @@ export const useKeyboardShortcuts = () => {
       }
 
       // UI toggles
-      if (isCmd && shiftKey && key === 'p') {
-        event.preventDefault()
-        togglePreview()
-      } else if (isCmd && key === ',') {
+      if (isCmd && key === ',') {
         event.preventDefault()
         toggleSettings()
       } else if (isCmd && key === 'f') {
@@ -124,5 +120,5 @@ export const useKeyboardShortcuts = () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keydown', handleEsc)
     }
-  }, [activeFile, insertMarkdownSyntax, newFile, saveFile, togglePreview, toggleSettings, openFindToolbar, openReplaceToolbar, closeSearchToolbar, searchVisible])
+  }, [activeFile, insertMarkdownSyntax, newFile, saveFile, toggleSettings, openFindToolbar, openReplaceToolbar, closeSearchToolbar, searchVisible])
 }

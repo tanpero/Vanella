@@ -238,6 +238,7 @@ export async function markdownToPmDoc(schema: Schema, markdown: string): Promise
 }
 
 export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
+  const unescapeMdInMath = (input: string): string => input.replace(/\\([_*#])/g, '$1')
   function splitTextToMdNodes(text: string): MdNode[] {
     const nodes: MdNode[] = []
     let i = 0
@@ -246,7 +247,7 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
         let j = i + 2
         while (j < text.length && !(text[j] === '\\' && text[j + 1] === ')')) j++
         if (j < text.length) {
-          nodes.push({ type: 'inlineMath', value: text.slice(i + 2, j) })
+          nodes.push({ type: 'inlineMath', value: unescapeMdInMath(text.slice(i + 2, j)) })
           i = j + 2
           continue
         } else {
@@ -259,7 +260,7 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
         let j = i + 1
         while (j < text.length && text[j] !== '$') j++
         if (j < text.length) {
-          nodes.push({ type: 'inlineMath', value: text.slice(i + 1, j) })
+          nodes.push({ type: 'inlineMath', value: unescapeMdInMath(text.slice(i + 1, j)) })
           i = j + 1
           continue
         } else {
@@ -345,7 +346,7 @@ export async function pmDocToMarkdown(doc: PMNode): Promise<string> {
       const env = node.attrs.env || ''
       const raw = node.textContent || ''
       const body = env ? `\\begin{${env}}\n${raw}\n\\end{${env}}` : raw
-      const value = body
+      const value = unescapeMdInMath(body)
       return { type: 'math', value }
     }
     if (name === 'toc_block') {
