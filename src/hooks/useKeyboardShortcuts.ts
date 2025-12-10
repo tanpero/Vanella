@@ -8,7 +8,11 @@ export const useKeyboardShortcuts = () => {
     newFile, 
     saveFile, 
     togglePreview, 
-    toggleSettings 
+    toggleSettings,
+    openFindToolbar,
+    openReplaceToolbar,
+    closeSearchToolbar,
+    searchVisible 
   } = useEditorStore()
 
   useEffect(() => {
@@ -72,6 +76,12 @@ export const useKeyboardShortcuts = () => {
       } else if (isCmd && key === ',') {
         event.preventDefault()
         toggleSettings()
+      } else if (isCmd && key === 'f') {
+        event.preventDefault()
+        openFindToolbar()
+      } else if (isCmd && key === 'h') {
+        event.preventDefault()
+        openReplaceToolbar()
       }
 
       // Heading shortcuts
@@ -101,6 +111,18 @@ export const useKeyboardShortcuts = () => {
     }
 
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeFile, insertMarkdownSyntax, newFile, saveFile, togglePreview, toggleSettings])
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (searchVisible) {
+          event.preventDefault()
+          closeSearchToolbar()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keydown', handleEsc)
+    }
+  }, [activeFile, insertMarkdownSyntax, newFile, saveFile, togglePreview, toggleSettings, openFindToolbar, openReplaceToolbar, closeSearchToolbar, searchVisible])
 }

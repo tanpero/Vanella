@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useCallback } from 'react'
-import { EditorView, drawSelection, dropCursor, highlightActiveLine } from '@codemirror/view'
+import { EditorView, drawSelection, dropCursor, highlightActiveLine, ViewPlugin, Decoration, DecorationSet } from '@codemirror/view'
+import type { ViewUpdate } from '@codemirror/view'
 import { markdown } from '@codemirror/lang-markdown'
-import { EditorState } from '@codemirror/state'
+import { EditorState, EditorSelection } from '@codemirror/state'
 import { history, defaultKeymap, historyKeymap } from '@codemirror/commands'
 import { keymap } from '@codemirror/view'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
@@ -16,7 +17,8 @@ interface MarkdownEditorProps {
 }
 
 const MarkdownEditor = React.forwardRef<{
-  insertSyntax: (syntax: string, placeholder?: string) => void
+  insertSyntax: (syntax: string, placeholder?: string) => void,
+  selectRange: (from: number, to: number) => void
 }, MarkdownEditorProps>(({ 
   className = '', 
   onChange, 
@@ -29,20 +31,53 @@ const MarkdownEditor = React.forwardRef<{
     config, 
     setEditorState,
     markdownSource,
-    setMarkdownSource 
+    setMarkdownSource,
+    regexEnabled,
+    caseSensitive,
+    wholeWord 
   } = useEditorStore()
   
   const isDarkTheme = config.theme === 'dark'
   const suppressSyncRef = useRef(false)
+  const buildRegex = (q: string) => {
+    let src = regexEnabled ? q : q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (wholeWord && q) src = `\\b${src}\\b`
+    const flags = 'g' + (caseSensitive ? '' : 'i')
+    try { return q ? new RegExp(src, flags) : null } catch { return null }
+  }
+  const searchHighlight = ViewPlugin.fromClass(class {
+    decorations: DecorationSet
+    constructor(view: EditorView) { this.decorations = this.make(view) }
+    update(update: ViewUpdate) { this.decorations = this.make(update.view) }
+    make(view: EditorView) {
+      const q = useEditorStore.getState().searchQuery
+      const vis = useEditorStore.getState().searchVisible
+      const activeIdx = useEditorStore.getState().searchIndex
+      const re = buildRegex(q || '')
+      if (!vis || !q || !re) return Decoration.none
+      const text = view.state.doc.toString()
+      const marks: Array<ReturnType<Decoration['range']>> = []
+      re.lastIndex = 0
+      let m: RegExpExecArray | null
+      let idx = 0
+      while ((m = re.exec(text)) !== null) {
+        const from = m.index
+        const to = from + m[0].length
+        const cls = (idx === activeIdx) ? 'cm-search-hit-active' : 'cm-search-hit'
+        marks.push(Decoration.mark({ class: cls }).range(from, to))
+        idx++
+        if (m[0].length === 0) re.lastIndex++
+      }
+      return Decoration.set(marks, true)
+    }
+  }, { decorations: v => v.decorations })
   
   const handleContentChange = useCallback((content: string) => {
     setMarkdownSource(content)
     onChange?.(content)
   }, [setMarkdownSource, onChange])
   
-  const handleSelectionChange = useCallback((selection: { from: number; to: number }) => {
-    onSelectionChange?.(selection)
-  }, [onSelectionChange])
+  // onSelectionChange is handled inline in updateListener
   
   useEffect(() => {
     if (!editorRef.current) return
@@ -56,6 +91,7 @@ const MarkdownEditor = React.forwardRef<{
       highlightActiveLine(),
       syntaxHighlighting(defaultHighlightStyle),
       markdown(),
+      searchHighlight,
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           const content = update.state.doc.toString()
@@ -72,30 +108,30 @@ const MarkdownEditor = React.forwardRef<{
           })
         }
       }),
-      EditorView.theme({
-        '&': {
-          fontSize: `${config.fontSize}px`,
-          fontFamily: 'Consolas, Monaco, monospace',
-          background: 'transparent'
-        },
-        '.cm-content': {
-          padding: '16px',
-          minHeight: '100%'
-        },
-        '.cm-line': {
-          padding: '0 8px'
-        },
-        '.cm-focused': {
-          outline: 'none'
-        },
-        '.cm-cursor': {
-          borderLeftWidth: '2px'
-        },
-        '.cm-selectionBackground': {
-          backgroundColor: isDarkTheme ? '#264f78' : '#add6ff'
-        }
-      }),
-      mapTheme(isDarkTheme ? 'material-dark' : 'material-light', isDarkTheme)
+          EditorView.theme({
+            '&': {
+              fontSize: `${config.fontSize}px`,
+              fontFamily: 'Consolas, Monaco, monospace',
+              background: 'transparent'
+            },
+            '.cm-content': {
+              padding: '16px',
+              minHeight: '100%'
+            },
+            '.cm-line': {
+              padding: '0 8px'
+            },
+            '.cm-focused': {
+              outline: 'none'
+            },
+            '.cm-cursor': {
+              borderLeftWidth: '2px'
+            },
+            '.cm-selectionBackground': {
+              backgroundColor: isDarkTheme ? '#264f78' : '#add6ff'
+            }
+          }),
+          mapTheme(isDarkTheme ? 'material-dark' : 'material-light', isDarkTheme)
     ]
     
     const state = EditorState.create({
@@ -216,9 +252,24 @@ const MarkdownEditor = React.forwardRef<{
     
     handleContentChange(newContent)
   }
+
+  const selectRange = (from: number, to: number) => {
+    if (!viewRef.current) return
+    const s = EditorSelection.range(from, to)
+    const view = viewRef.current
+    view.dispatch({ selection: s, scrollIntoView: true })
+    const coords = view.coordsAtPos(Math.min(from, to))
+    const scroller = view.scrollDOM
+    const containerRect = scroller.getBoundingClientRect()
+    const current = scroller.scrollTop
+    const relTop = coords.top - containerRect.top + current
+    const target = Math.max(0, relTop - scroller.clientHeight / 2)
+    scroller.scrollTo({ top: target })
+  }
   
   React.useImperativeHandle(ref, () => ({
-    insertSyntax
+    insertSyntax,
+    selectRange
   }))
   
   return (

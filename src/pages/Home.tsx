@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useEffect } from 'react'
 import Toolbar from '@/components/Toolbar'
 import Sidebar from '@/components/Sidebar'
 import EditorShell from '@/modes/EditorShell'
@@ -13,7 +13,6 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { exportMarkdown, exportHTML } from '@/utils/export'
 
 export default function Home() {
-  const editorRef = useRef<{ insertSyntax: (syntax: string, placeholder?: string) => void }>(null)
   
   const { 
     config, 
@@ -24,7 +23,7 @@ export default function Home() {
     addTab, 
     toggleSettings,
     togglePreview,
-    setEditorRef 
+    insertMarkdownSyntax 
   } = useEditorStore()
   
   const isDarkTheme = config.theme === 'dark'
@@ -55,11 +54,7 @@ export default function Home() {
   // Initialize keyboard shortcuts
   useKeyboardShortcuts()
   
-  // Set editor ref in store
-  useEffect(() => {
-    setEditorRef(editorRef.current)
-    return () => setEditorRef(null)
-  }, [setEditorRef])
+  // Ref managed in SourceEditor
   
   // Initialize with a welcome file
   useEffect(() => {
@@ -173,7 +168,7 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
   }, [activeFile, addTab, setActiveFile])
   
   const handleInsertSyntax = (syntax: string, placeholder?: string) => {
-    editorRef.current?.insertSyntax(syntax, placeholder)
+    insertMarkdownSyntax(syntax, placeholder)
   }
   
   const handleNewFile = () => {

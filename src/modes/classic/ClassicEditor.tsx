@@ -382,15 +382,46 @@ export default function ClassicEditor() {
               return null
             }
           }),
-          new Plugin({
-            props: {
-              decorations: (s: EditorState) => {
-                const md = buildInlineDecorations(s)
-                const mx = buildMathInlineDecorations(s)
-                return DecorationSet.create(s.doc, md.concat(mx))
-              }
+        new Plugin({
+          props: {
+            decorations: (s: EditorState) => {
+              const md = buildInlineDecorations(s)
+              const mx = buildMathInlineDecorations(s)
+              return DecorationSet.create(s.doc, md.concat(mx))
             }
-          }),
+          }
+        }),
+        new Plugin({
+          props: {
+            decorations: (s: EditorState) => {
+              const { searchVisible, searchQuery, regexEnabled, caseSensitive, wholeWord, searchIndex } = useEditorStore.getState() as unknown as { searchVisible: boolean, searchQuery: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean, searchIndex: number }
+              if (!searchVisible || !searchQuery) return null
+              let source = regexEnabled ? searchQuery : searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+              if (wholeWord) source = `\\b${source}\\b`
+              const flags = 'g' + (caseSensitive ? '' : 'i')
+              let re: RegExp
+              try { re = new RegExp(source, flags) } catch { return null }
+              const decos: Decoration[] = []
+              let idx = 0
+              s.doc.descendants((node, from) => {
+                if (node.isText) {
+                  const text = node.text || ''
+                  re.lastIndex = 0
+                  let m: RegExpExecArray | null
+                  while ((m = re.exec(text)) !== null) {
+                    const start = from + m.index
+                    const end = start + m[0].length
+                    const cls = (idx === searchIndex) ? 'pm-search-hit-active' : 'pm-search-hit'
+                    decos.push(Decoration.inline(start, end, { class: cls }))
+                    idx++
+                    if (m[0].length === 0) re.lastIndex++
+                  }
+                }
+              })
+              return DecorationSet.create(s.doc, decos)
+            }
+          }
+        }),
           keymap(baseKeymap),
           inputRules({
             rules: [
@@ -522,6 +553,27 @@ export default function ClassicEditor() {
                     const node = schema.nodes.math_block.create({}, schema.text(raw))
                     const tr = view.state.tr.replaceSelectionWith(node, false)
                     view.dispatch(tr)
+                    return true
+                  }
+                  if (!text) return false
+                  const likelyMd = /(^|\n)\s*(#{1,6}\s)|(^|\n)\s*[-*+]\s|(^|\n)\s*\d+\.\s|(^|\n)\s*>\s|```|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|(^|\n)\s*---\s*$|(^|\n)\s*\|/.test(text)
+                  if (likelyMd) {
+                    event.preventDefault()
+                    const sc = view.state.schema
+                    ;(async () => {
+                      try {
+                        const doc = await markdownToPmDoc(sc, text)
+                        const children: PMNode[] = []
+                        doc.forEach(n => { children.push(n as PMNode) })
+                        let tr = view.state.tr.deleteSelection()
+                        const pos = tr.selection.$from.pos
+                        tr = tr.insert(pos, children)
+                        view.dispatch(tr)
+                      } catch {
+                        const tr = view.state.tr.replaceSelectionWith(view.state.schema.text(text), false)
+                        view.dispatch(tr)
+                      }
+                    })()
                     return true
                   }
                   return false

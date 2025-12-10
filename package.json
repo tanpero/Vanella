@@ -5,14 +5,15 @@
   "description": "写作软件",
   "author": "Camille",
   "type": "module",
-  "main": "electron/main.cjs",
+  "main": "electron/bundle/main.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "check": "tsc -b --noEmit",
-    "electron:build": "npm run build && electron-builder --win nsis",
+    "bundle:electron": "node scripts/bundle-electron.mjs",
+    "electron:build": "npm run build && npm run bundle:electron && electron-builder --win nsis",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -111,24 +112,50 @@
     "vite": "^6.3.5",
     "vite-plugin-trae-solo-badge": "^1.0.0",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^1.6.1"
+    "vitest": "^1.6.1",
+    "esbuild": "^0.24.0"
   },
   "build": {
     "appId": "com.vanella.app",
     "productName": "Vanella",
     "directories": {
-      "output": "release2",
+      "output": "release",
       "buildResources": "public"
     },
     "files": [
       "dist/**",
-      "electron/**",
-      "package.json"
+      "electron/bundle/**",
+      "native/rust-addon/index.node",
+      "package.json",
+      "!**/node_modules{,/**/*}",
+      "!**/*.md",
+      "!**/*.markdown",
+      "!**/README{,.*}",
+      "!**/CHANGELOG{,.*}",
+      "!**/LICENSE{,.*}",
+      "!**/docs{,/**/*}",
+      "!**/doc{,/**/*}",
+      "!**/test{,/**/*}",
+      "!**/tests{,/**/*}",
+      "!**/example{,/**/*}",
+      "!**/examples{,/**/*}",
+      "!**/benchmark{,/**/*}",
+      "!**/*.map",
+      "!**/*.ts",
+      "!**/*.tsx",
+      "!**/*.coffee",
+      "!**/*.d.ts"
     ],
     "asar": true,
     "compression": "maximum",
     "asarUnpack": [
       "**/*.node"
+    ],
+    "extraResources": [
+      {
+        "from": "public",
+        "to": "public"
+      }
     ],
     "publish": [
       {
@@ -137,6 +164,7 @@
       }
     ],
     "win": {
+      "icon": "public/favicon.ico",
       "target": [
         "nsis"
       ]

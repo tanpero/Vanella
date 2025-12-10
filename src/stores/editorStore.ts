@@ -3,6 +3,7 @@ import { AppConfig, FileState, EditorState, EditorTab, FileTreeNode, LoadingStat
 import { generateId } from '@/utils/markdown'
 import type { EditorView } from 'prosemirror-view'
 import type { Transaction } from 'prosemirror-state'
+import { TextSelection } from 'prosemirror-state'
 
 interface EditorStore {
   // App configuration
@@ -80,8 +81,8 @@ interface EditorStore {
   togglePreview: () => void
 
   // Editor ref and markdown helpers
-  editorRef: { insertSyntax: (syntax: string, placeholder?: string) => void } | null
-  setEditorRef: (ref: { insertSyntax: (syntax: string, placeholder?: string) => void } | null) => void
+  editorRef: { insertSyntax: (syntax: string, placeholder?: string) => void; selectRange?: (from: number, to: number) => void } | null
+  setEditorRef: (ref: { insertSyntax: (syntax: string, placeholder?: string) => void; selectRange?: (from: number, to: number) => void } | null) => void
   insertMarkdownSyntax: (syntax: string, placeholder?: string, suffix?: string) => void
 
   // Basic file actions
@@ -92,6 +93,29 @@ interface EditorStore {
   loadingState: LoadingState
   setLoading: (state: Partial<LoadingState>) => void
   clearLoading: () => void
+
+  // Search/Replace
+  searchVisible: boolean
+  searchMode: 'find' | 'replace'
+  searchQuery: string
+  replaceQuery: string
+  regexEnabled: boolean
+  caseSensitive: boolean
+  wholeWord: boolean
+  searchIndex: number
+  searchCount: number
+  openFindToolbar: () => void
+  openReplaceToolbar: () => void
+  closeSearchToolbar: () => void
+  setSearchQuery: (q: string) => void
+  setReplaceQuery: (q: string) => void
+  toggleRegex: () => void
+  toggleCaseSensitive: () => void
+  toggleWholeWord: () => void
+  findNext: () => void
+  findPrev: () => void
+  replaceOne: () => void
+  replaceAll: () => void
 }
 
 const defaultConfig: AppConfig = {
@@ -476,7 +500,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         const seg = lines[i].split('|')
         const items = seg.map(s => s.trim())
         const idxs = [] as number[]
-        for (let j = 0, k = 0; j < items.length; j++) if (items[j].length > 0) { idxs.push(j); k++ }
+        for (let jj = 0; jj < items.length; jj++) if (items[jj].length > 0) { idxs.push(jj) }
         const j = idxs[targetIdx] || idxs[0] || 1
         if (cmd === 'col_add_left') {
           items.splice(j, 0, i === start ? 'Header' : 'Cell')
@@ -492,8 +516,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     setMarkdownSource(lines.join('\n'))
   },
   
-  editorRef: null as { insertSyntax: (syntax: string, placeholder?: string) => void } | null,
-  setEditorRef: (ref: { insertSyntax: (syntax: string, placeholder?: string) => void } | null) => 
+  editorRef: null as { insertSyntax: (syntax: string, placeholder?: string) => void; selectRange?: (from: number, to: number) => void } | null,
+  setEditorRef: (ref: { insertSyntax: (syntax: string, placeholder?: string) => void; selectRange?: (from: number, to: number) => void } | null) => 
     set({ editorRef: ref }),
   
   insertMarkdownSyntax: (syntax: string, placeholder?: string) => {
@@ -552,6 +576,170 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   loadingState: { active: false, stage: '', percent: 0, note: '', cancellable: false },
   setLoading: (state) => set((prev) => ({ loadingState: { ...prev.loadingState, ...state } })),
   clearLoading: () => set({ loadingState: { active: false, stage: '', percent: 0, note: '', cancellable: false } })
+  ,
+  searchVisible: false,
+  searchMode: 'find',
+  searchQuery: '',
+  replaceQuery: '',
+  regexEnabled: false,
+  caseSensitive: false,
+  wholeWord: false,
+  searchIndex: 0,
+  searchCount: 0,
+  openFindToolbar: () => set({ searchVisible: true, searchMode: 'find' }),
+  openReplaceToolbar: () => set({ searchVisible: true, searchMode: 'replace' }),
+  closeSearchToolbar: () => set({ searchVisible: false }),
+  setSearchQuery: (q: string) => {
+    const next = q || ''
+    const mode = get().editorMode
+    if (mode === 'classic') {
+      const view = get().pmView
+      const anchor = view ? view.state.selection.from : 0
+      const matches = computePmMatches(next, get().regexEnabled, get().caseSensitive, get().wholeWord)
+      const startIdx = matches.findIndex(m => m.from >= anchor)
+      const idx = startIdx >= 0 ? startIdx : (matches.length > 0 ? 0 : 0)
+      set({ searchQuery: next, searchIndex: idx, searchCount: matches.length })
+      if (matches.length > 0) selectPmRange(matches[idx].from, matches[idx].to)
+    } else {
+      const anchor = (get().editorState?.cursorPosition || 0) as number
+      const matches = computeSourceMatches(get().markdownSource || '', next, get().regexEnabled, get().caseSensitive, get().wholeWord)
+      const startIdx = matches.findIndex(m => m.from >= anchor)
+      const idx = startIdx >= 0 ? startIdx : (matches.length > 0 ? 0 : 0)
+      set({ searchQuery: next, searchIndex: idx, searchCount: matches.length })
+      if (matches.length > 0) selectSourceRange(matches[idx].from, matches[idx].to)
+    }
+  },
+  setReplaceQuery: (q: string) => set({ replaceQuery: q || '' }),
+  toggleRegex: () => {
+    const { searchQuery, caseSensitive, editorMode, wholeWord } = get()
+    const regexEnabled = !get().regexEnabled
+    if (editorMode === 'classic') {
+      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      set({ regexEnabled, searchIndex: matches.length > 0 ? Math.min(get().searchIndex, matches.length - 1) : 0, searchCount: matches.length })
+      if (matches.length > 0) selectPmRange(matches[Math.min(get().searchIndex, matches.length - 1)].from, matches[Math.min(get().searchIndex, matches.length - 1)].to)
+    } else {
+      const matches = computeSourceMatches(get().markdownSource || '', searchQuery, regexEnabled, caseSensitive, wholeWord)
+      set({ regexEnabled, searchIndex: matches.length > 0 ? Math.min(get().searchIndex, matches.length - 1) : 0, searchCount: matches.length })
+      if (matches.length > 0) selectSourceRange(matches[Math.min(get().searchIndex, matches.length - 1)].from, matches[Math.min(get().searchIndex, matches.length - 1)].to)
+    }
+  },
+  toggleCaseSensitive: () => {
+    const { searchQuery, regexEnabled, editorMode, wholeWord } = get()
+    const caseSensitive = !get().caseSensitive
+    if (editorMode === 'classic') {
+      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      set({ caseSensitive, searchIndex: matches.length > 0 ? Math.min(get().searchIndex, matches.length - 1) : 0, searchCount: matches.length })
+      if (matches.length > 0) selectPmRange(matches[Math.min(get().searchIndex, matches.length - 1)].from, matches[Math.min(get().searchIndex, matches.length - 1)].to)
+    } else {
+      const matches = computeSourceMatches(get().markdownSource || '', searchQuery, regexEnabled, caseSensitive, wholeWord)
+      set({ caseSensitive, searchIndex: matches.length > 0 ? Math.min(get().searchIndex, matches.length - 1) : 0, searchCount: matches.length })
+      if (matches.length > 0) selectSourceRange(matches[Math.min(get().searchIndex, matches.length - 1)].from, matches[Math.min(get().searchIndex, matches.length - 1)].to)
+    }
+  },
+  toggleWholeWord: () => {
+    const { searchQuery, regexEnabled, caseSensitive, editorMode } = get()
+    const wholeWord = !get().wholeWord
+    if (editorMode === 'classic') {
+      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      set({ wholeWord, searchIndex: matches.length > 0 ? Math.min(get().searchIndex, matches.length - 1) : 0, searchCount: matches.length })
+      if (matches.length > 0) selectPmRange(matches[Math.min(get().searchIndex, matches.length - 1)].from, matches[Math.min(get().searchIndex, matches.length - 1)].to)
+    } else {
+      const matches = computeSourceMatches(get().markdownSource || '', searchQuery, regexEnabled, caseSensitive, wholeWord)
+      set({ wholeWord, searchIndex: matches.length > 0 ? Math.min(get().searchIndex, matches.length - 1) : 0, searchCount: matches.length })
+      if (matches.length > 0) selectSourceRange(matches[Math.min(get().searchIndex, matches.length - 1)].from, matches[Math.min(get().searchIndex, matches.length - 1)].to)
+    }
+  },
+  findNext: () => {
+    const { editorMode, searchQuery, regexEnabled, caseSensitive, wholeWord } = get()
+    if (!searchQuery) return
+    if (editorMode === 'classic') {
+      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      if (matches.length === 0) { set({ searchCount: 0 }); return }
+      const idx = (get().searchIndex + 1) % matches.length
+      set({ searchIndex: idx, searchCount: matches.length })
+      const m = matches[idx]
+      selectPmRange(m.from, m.to)
+    } else {
+      const src = get().markdownSource || ''
+      const matches = computeSourceMatches(src, searchQuery, regexEnabled, caseSensitive, wholeWord)
+      if (matches.length === 0) { set({ searchCount: 0 }); return }
+      const idx = (get().searchIndex + 1) % matches.length
+      set({ searchIndex: idx, searchCount: matches.length })
+      const m = matches[idx]
+      selectSourceRange(m.from, m.to)
+    }
+  },
+  findPrev: () => {
+    const { editorMode, searchQuery, regexEnabled, caseSensitive, wholeWord } = get()
+    if (!searchQuery) return
+    if (editorMode === 'classic') {
+      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      if (matches.length === 0) { set({ searchCount: 0 }); return }
+      const idx = (get().searchIndex - 1 + matches.length) % matches.length
+      set({ searchIndex: idx, searchCount: matches.length })
+      const m = matches[idx]
+      selectPmRange(m.from, m.to)
+    } else {
+      const src = get().markdownSource || ''
+      const matches = computeSourceMatches(src, searchQuery, regexEnabled, caseSensitive, wholeWord)
+      if (matches.length === 0) { set({ searchCount: 0 }); return }
+      const idx = (get().searchIndex - 1 + matches.length) % matches.length
+      set({ searchIndex: idx, searchCount: matches.length })
+      const m = matches[idx]
+      selectSourceRange(m.from, m.to)
+    }
+  },
+  replaceOne: () => {
+    const { editorMode, searchQuery, replaceQuery, regexEnabled, caseSensitive, wholeWord } = get()
+    if (!searchQuery) return
+    if (editorMode === 'classic') {
+      const view = get().pmView
+      if (!view) return
+      const matches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      if (matches.length === 0) return
+      const idx = Math.min(get().searchIndex, matches.length - 1)
+      const m = matches[idx]
+      const text = replaceWith(searchQuery, replaceQuery, view.state.doc.textBetween(m.from, m.to), regexEnabled, caseSensitive)
+      const tr = view.state.tr.insertText(text, m.from, m.to)
+      view.dispatch(tr)
+      const nextMatches = computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord)
+      set({ searchIndex: Math.min(idx, Math.max(0, nextMatches.length - 1)), searchCount: nextMatches.length })
+    } else {
+      const src = get().markdownSource || ''
+      const matches = computeSourceMatches(src, searchQuery, regexEnabled, caseSensitive, wholeWord)
+      if (matches.length === 0) return
+      const idx = Math.min(get().searchIndex, matches.length - 1)
+      const m = matches[idx]
+      const segment = src.slice(m.from, m.to)
+      const text = replaceWith(searchQuery, replaceQuery, segment, regexEnabled, caseSensitive)
+      const next = src.slice(0, m.from) + text + src.slice(m.to)
+      get().setMarkdownSource(next)
+      const nextMatches = computeSourceMatches(next, searchQuery, regexEnabled, caseSensitive, wholeWord)
+      set({ searchIndex: Math.min(idx, Math.max(0, nextMatches.length - 1)), searchCount: nextMatches.length })
+      selectSourceRange(Math.min(m.from + text.length, next.length), Math.min(m.from + text.length, next.length))
+    }
+  },
+  replaceAll: async () => {
+    const { editorMode, searchQuery, replaceQuery, regexEnabled, caseSensitive, wholeWord } = get()
+    if (!searchQuery) return
+    if (editorMode === 'classic') {
+      const view = get().pmView
+      if (!view) return
+      const { pmDocToMarkdown } = await import('@/markdown/convert')
+      const raw = await pmDocToMarkdown(view.state.doc as any)
+      const next = replaceAllText(raw, searchQuery, replaceQuery, regexEnabled, caseSensitive, wholeWord)
+      const { markdownToPmDoc } = await import('@/markdown/convert')
+      const doc = await markdownToPmDoc(view.state.schema as any, next)
+      const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content)
+      view.dispatch(tr)
+      set({ searchCount: computePmMatches(searchQuery, regexEnabled, caseSensitive, wholeWord).length })
+    } else {
+      const src = get().markdownSource || ''
+      const next = replaceAllText(src, searchQuery, replaceQuery, regexEnabled, caseSensitive, wholeWord)
+      get().setMarkdownSource(next)
+      set({ searchCount: computeSourceMatches(next, searchQuery, regexEnabled, caseSensitive, wholeWord).length })
+    }
+  }
 }))
 function findDirHandleByPath(tree: FileTreeNode[], path: string): FileSystemDirectoryHandle | null {
   for (const n of tree) {
@@ -564,4 +752,92 @@ function findDirHandleByPath(tree: FileTreeNode[], path: string): FileSystemDire
     }
   }
   return null
+}
+
+function buildRegex(query: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean): RegExp | null {
+  if (!query) return null
+  try {
+    let source = regexEnabled ? query : escapeReg(query)
+    if (wholeWord) source = `\\b${source}\\b`
+    const flags = 'g' + (caseSensitive ? '' : 'i')
+    return new RegExp(source, flags)
+  } catch { return null }
+}
+
+function escapeReg(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function computeSourceMatches(text: string, query: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean): Array<{ from: number; to: number }> {
+  const re = buildRegex(query, regexEnabled, caseSensitive, wholeWord)
+  if (!re) return []
+  const out: Array<{ from: number; to: number }> = []
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    out.push({ from: m.index, to: m.index + m[0].length })
+    if (m[0].length === 0) re.lastIndex++
+  }
+  return out
+}
+
+function computePmMatches(query: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean): Array<{ from: number; to: number }> {
+  const view = useEditorStore.getState().pmView
+  if (!view || !query) return []
+  const re = buildRegex(query, regexEnabled, caseSensitive, wholeWord)
+  if (!re) return []
+  const out: Array<{ from: number; to: number }> = []
+  const doc = view.state.doc
+  doc.descendants((node, from) => {
+    if (node.isText && typeof node.text === 'string') {
+      const text = node.text
+      re.lastIndex = 0
+      let m: RegExpExecArray | null
+      while ((m = re.exec(text)) !== null) {
+        const s = from + m.index
+        const e = s + m[0].length
+        out.push({ from: s, to: e })
+        if (m[0].length === 0) re.lastIndex++
+      }
+    }
+  })
+  return out
+}
+
+function selectPmRange(from: number, to: number) {
+  const view = useEditorStore.getState().pmView
+  if (!view) return
+  const maxPos = view.state.doc.content.size
+  const anchor = Math.min(Math.max(0, from), maxPos)
+  const head = Math.min(Math.max(0, to), maxPos)
+  const sel = TextSelection.create(view.state.doc, Math.min(anchor, head), Math.max(anchor, head))
+  view.dispatch(view.state.tr.setSelection(sel).scrollIntoView())
+  try {
+    const coords = view.coordsAtPos(Math.min(anchor, head))
+    const container = (view.dom.closest('.pm-shell') as HTMLElement) || (view.dom.parentElement as HTMLElement)
+    if (container) {
+      const rect = container.getBoundingClientRect()
+      const current = container.scrollTop
+      const relTop = coords.top - rect.top + current
+      const target = Math.max(0, relTop - container.clientHeight / 2)
+      container.scrollTo({ top: target })
+    }
+  } catch { void 0 }
+}
+
+function selectSourceRange(from: number, to: number) {
+  const editorRefObj = useEditorStore.getState().editorRef
+  const fn = editorRefObj?.selectRange
+  if (fn) fn(from, to)
+}
+
+function replaceWith(query: string, replaceQuery: string, segment: string, regexEnabled: boolean, caseSensitive: boolean): string {
+  const re = buildRegex(query, regexEnabled, caseSensitive, false)
+  if (!re) return segment
+  return segment.replace(re, replaceQuery)
+}
+
+function replaceAllText(text: string, query: string, replaceQuery: string, regexEnabled: boolean, caseSensitive: boolean, wholeWord: boolean): string {
+  const re = buildRegex(query, regexEnabled, caseSensitive, wholeWord)
+  if (!re) return text
+  return text.replace(re, replaceQuery)
 }

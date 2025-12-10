@@ -158,3 +158,9 @@ html, body { height: 100%; overflow: hidden; }
 .pm-editor.dark .pm-image-caption { color: #9ca3af; }
 /* keep editor/container scrollable while page is locked */
 /* .pm-shell already has overflow:auto above */
+
+/* Search highlights */
+.pm-search-hit { background: #fde68a; }
+.cm-search-hit { background: #fde68a; }
+.pm-search-hit-active { background: #fb923c; }
+.cm-search-hit-active { background: #fb923c; }

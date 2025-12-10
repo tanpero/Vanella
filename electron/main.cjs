@@ -6,7 +6,9 @@ const { createHash } = require('node:crypto')
 
 function loadNative() {
   try {
-    const modPath = path.join(__dirname, '..', 'native', 'rust-addon', 'index.node')
+    const isDev = process.env.ELECTRON_DEV === 'true' || process.env.VITE_DEV_SERVER_URL
+    const base = isDev ? process.cwd() : process.resourcesPath
+    const modPath = path.join(base, 'native', 'rust-addon', 'index.node')
     return require(modPath)
   } catch {
     return null
@@ -44,7 +46,7 @@ function createWindow() {
     win.loadURL(devUrl)
     win.webContents.openDevTools({ mode: 'detach' })
   } else {
-    win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
+    win.loadFile(path.join(process.resourcesPath, 'dist', 'index.html'))
   }
 
   // send deferred file open path once renderer is ready
