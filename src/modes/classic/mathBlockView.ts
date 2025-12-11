@@ -1,14 +1,30 @@
 import type { Node as PMNode } from 'prosemirror-model'
 import type { EditorView as PMEditorView } from 'prosemirror-view'
 import { TextSelection } from 'prosemirror-state'
-import { EditorState as CMState } from '@codemirror/state'
+import { EditorState as CMState, EditorSelection } from '@codemirror/state'
 import { EditorView as CMView, keymap, drawSelection, dropCursor, highlightActiveLine } from '@codemirror/view'
 import { history, defaultKeymap } from '@codemirror/commands'
 import { bracketMatching, syntaxHighlighting, defaultHighlightStyle, StreamLanguage } from '@codemirror/language'
-import { closeBrackets } from '@codemirror/autocomplete'
+import { closeBrackets, autocompletion, acceptCompletion } from '@codemirror/autocomplete'
 import { stex } from '@codemirror/legacy-modes/mode/stex'
 import { useEditorStore } from '@/stores/editorStore'
 import { mapTheme } from '@/modes/shared/codemirrorConfig'
+import { latexCompletionSource } from '@/modes/shared/latexCompletion'
+
+const deleteEmptyBraces = (view: CMView) => {
+  const sel = view.state.selection
+  const range = sel.main
+  if (!range.empty) return false
+  const pos = range.from
+  if (pos <= 0 || pos >= view.state.doc.length) return false
+  const left = view.state.doc.sliceString(pos - 1, pos)
+  const right = view.state.doc.sliceString(pos, pos + 1)
+  if (left === '{' && right === '}') {
+    view.dispatch({ changes: { from: pos - 1, to: pos + 1, insert: '' }, selection: EditorSelection.single(pos - 1) })
+    return true
+  }
+  return false
+}
 
 /*
   MathBlockView：LaTeX 数学块编辑与预览
@@ -83,12 +99,15 @@ export class MathBlockView {
       doc: node.textContent || '',
       extensions: [
         history(),
+        keymap.of([{ key: 'Tab', run: acceptCompletion }]),
+        keymap.of([{ key: 'Backspace', run: deleteEmptyBraces }, { key: 'Delete', run: deleteEmptyBraces }]),
         keymap.of([...defaultKeymap]),
         drawSelection(),
         dropCursor(),
         highlightActiveLine(),
         bracketMatching(),
         closeBrackets(),
+        autocompletion({ override: [latexCompletionSource], activateOnTyping: true }),
         syntaxHighlighting(defaultHighlightStyle),
         StreamLanguage.define(stex),
         CMView.theme({
@@ -275,12 +294,15 @@ export class MathBlockView {
         const nextTheme = mapTheme(themeKey, curDark)
         const baseExt = [
           history(),
+          keymap.of([{ key: 'Tab', run: acceptCompletion }]),
+          keymap.of([{ key: 'Backspace', run: deleteEmptyBraces }, { key: 'Delete', run: deleteEmptyBraces }]),
           keymap.of([...defaultKeymap]),
           drawSelection(),
           dropCursor(),
           highlightActiveLine(),
           bracketMatching(),
           closeBrackets(),
+          autocompletion({ override: [latexCompletionSource], activateOnTyping: true }),
           syntaxHighlighting(defaultHighlightStyle),
           StreamLanguage.define(stex),
           CMView.theme({

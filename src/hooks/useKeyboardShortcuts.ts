@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
+import { useCardStore } from '@/stores/cardStore'
 
 export const useKeyboardShortcuts = () => {
   const { 
@@ -13,6 +14,8 @@ export const useKeyboardShortcuts = () => {
     closeSearchToolbar,
     searchVisible 
   } = useEditorStore()
+  const { createCard } = useCardStore()
+  const { sidebarMode } = useEditorStore()
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -28,7 +31,11 @@ export const useKeyboardShortcuts = () => {
       // File operations
       if (isCmd && key === 'n') {
         event.preventDefault()
-        newFile()
+        if (sidebarMode === 'cards') {
+          void createCard()
+        } else {
+          newFile()
+        }
       } else if (isCmd && shiftKey && key === 's') {
         event.preventDefault()
         // Save as functionality (placeholder)
@@ -120,5 +127,5 @@ export const useKeyboardShortcuts = () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keydown', handleEsc)
     }
-  }, [activeFile, insertMarkdownSyntax, newFile, saveFile, toggleSettings, openFindToolbar, openReplaceToolbar, closeSearchToolbar, searchVisible])
+  }, [activeFile, insertMarkdownSyntax, newFile, saveFile, toggleSettings, openFindToolbar, openReplaceToolbar, closeSearchToolbar, searchVisible, sidebarMode, createCard])
 }
