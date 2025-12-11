@@ -10,8 +10,9 @@
     * 任务清单与图片交互：.pm-task-item / .pm-image-wrap / .pm-image-markers / .pm-image-caption
 */
 .pm-editor {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans", sans-serif;
   line-height: 1.7;
   color: #1f2937;
 }
@@ -449,7 +450,9 @@ body {
 }
 .pm-block-editor-row {
   /* 块编辑行（gutter + 编辑器）淡入淡出动画 */
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
   will-change: opacity, transform;
 }
 .pm-block-editor-row-hidden {
@@ -458,7 +461,9 @@ body {
 }
 .pm-block-preview {
   /* 块预览区淡入淡出动画 */
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
   will-change: opacity, transform;
 }
 .pm-block-preview-hidden {
@@ -493,7 +498,9 @@ body {
   background: #ffffff;
   display: inline-block;
   position: relative;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 .pm-editor.dark .pm-task-item input[type="checkbox"] {
   border-color: #6b7280;

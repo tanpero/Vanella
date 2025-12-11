@@ -1,106 +1,215 @@
-import React, { useState } from 'react'
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  File, 
-  Folder, 
+import React, { useState } from "react";
+import {
+  ChevronRight,
+  ChevronDown,
+  File,
+  Folder,
   FolderOpen,
   Plus,
-  RefreshCw
-} from 'lucide-react'
-import { useEditorStore } from '@/stores/editorStore'
-import { FileTreeNode } from '@/types/editor'
+  RefreshCw,
+} from "lucide-react";
+import { useEditorStore } from "@/stores/editorStore";
+import { useCardStore } from "@/stores/cardStore";
+import CardList from "@/components/CardList";
+import { FileTreeNode } from "@/types/editor";
 
 interface SidebarProps {
-  className?: string
-  width?: number
+  className?: string;
+  width?: number;
 }
 
 interface FileTreeItemProps {
-  node: FileTreeNode
-  depth: number
-  onFileClick: (path: string) => void
-  onFolderToggle: (path: string) => void
-  isDarkTheme: boolean
+  node: FileTreeNode;
+  depth: number;
+  onFileClick: (path: string) => void;
+  onFolderToggle: (path: string) => void;
+  isDarkTheme: boolean;
 }
 
-function FileTreeItem({ node, depth, onFileClick, onFolderToggle, isDarkTheme }: FileTreeItemProps) {
-  const [isExpanded, setIsExpanded] = useState(node.isExpanded || false)
-  const [menuPos, setMenuPos] = useState<{x:number,y:number}|null>(null)
-  
+function FileTreeItem({
+  node,
+  depth,
+  onFileClick,
+  onFolderToggle,
+  isDarkTheme,
+}: FileTreeItemProps) {
+  const [isExpanded, setIsExpanded] = useState(node.isExpanded || false);
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+
   const handleClick = () => {
-    if (node.type === 'directory') {
-      setIsExpanded(!isExpanded)
-      onFolderToggle(node.path)
+    if (node.type === "directory") {
+      setIsExpanded(!isExpanded);
+      onFolderToggle(node.path);
     } else {
-      onFileClick(node.path)
+      onFileClick(node.path);
     }
-  }
-  
-  const paddingLeft = depth * 16 + 8
-  
+  };
+
+  const paddingLeft = depth * 16 + 8;
+
   return (
     <div>
       <div
         onClick={handleClick}
-        onContextMenu={(e) => { e.preventDefault(); setMenuPos({ x: e.clientX, y: e.clientY }) }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenuPos({ x: e.clientX, y: e.clientY });
+        }}
         style={{
-          display: 'flex',
-          alignItems: 'center',
+          display: "flex",
+          alignItems: "center",
           paddingLeft: `${paddingLeft}px`,
-          paddingRight: '8px',
-          paddingTop: '4px',
-          paddingBottom: '4px',
-          cursor: 'pointer',
-          color: isDarkTheme ? '#d1d5db' : '#374151',
-          transition: 'background-color 0.2s'
+          paddingRight: "8px",
+          paddingTop: "4px",
+          paddingBottom: "4px",
+          cursor: "pointer",
+          color: isDarkTheme ? "#d1d5db" : "#374151",
+          transition: "background-color 0.2s",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = isDarkTheme ? '#374151' : '#f3f4f6'
+          e.currentTarget.style.backgroundColor = isDarkTheme
+            ? "#374151"
+            : "#f3f4f6";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = 'transparent'
+          e.currentTarget.style.backgroundColor = "transparent";
         }}
       >
-        {node.type === 'directory' ? (
+        {node.type === "directory" ? (
           <>
             {isExpanded ? (
-              <ChevronDown size={16} style={{ marginRight: '4px' }} />
+              <ChevronDown size={16} style={{ marginRight: "4px" }} />
             ) : (
-              <ChevronRight size={16} style={{ marginRight: '4px' }} />
+              <ChevronRight size={16} style={{ marginRight: "4px" }} />
             )}
             {isExpanded ? (
-              <FolderOpen size={16} style={{ marginRight: '8px', color: '#f59e0b' }} />
+              <FolderOpen
+                size={16}
+                style={{ marginRight: "8px", color: "#f59e0b" }}
+              />
             ) : (
-              <Folder size={16} style={{ marginRight: '8px', color: '#f59e0b' }} />
+              <Folder
+                size={16}
+                style={{ marginRight: "8px", color: "#f59e0b" }}
+              />
             )}
           </>
         ) : (
           <>
-            <div style={{ width: '16px', marginRight: '4px' }} />
-            <File size={16} style={{ marginRight: '8px', color: '#6b7280' }} />
+            <div style={{ width: "16px", marginRight: "4px" }} />
+            <File size={16} style={{ marginRight: "8px", color: "#6b7280" }} />
           </>
         )}
-        <span style={{ fontSize: '14px', userSelect: 'none' }}>{node.name}</span>
+        <span style={{ fontSize: "14px", userSelect: "none" }}>
+          {node.name}
+        </span>
       </div>
       {menuPos && (
-        <div style={{ position: 'fixed', left: menuPos.x + 4, top: menuPos.y + 4, background: isDarkTheme ? '#1f2937' : '#ffffff', border: `1px solid ${isDarkTheme ? '#374151' : '#e5e7eb'}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.12)' }} onMouseLeave={() => setMenuPos(null)}>
-          {node.type === 'file' ? (
-            <div style={{ display:'flex', flexDirection:'column' }}>
-              <button style={{ padding: '6px 10px', background:'transparent', border:'none', textAlign:'left', cursor:'pointer', color: isDarkTheme ? '#d1d5db' : '#374151' }} onClick={() => { const newName = prompt('重命名为：', node.name) || ''; if (newName) (useEditorStore.getState().renameNode(node, newName)); setMenuPos(null) }}>重命名</button>
-              <button style={{ padding: '6px 10px', background:'transparent', border:'none', textAlign:'left', cursor:'pointer', color: '#dc2626' }} onClick={() => { useEditorStore.getState().deleteNode(node); setMenuPos(null) }}>删除</button>
+        <div
+          style={{
+            position: "fixed",
+            left: menuPos.x + 4,
+            top: menuPos.y + 4,
+            background: isDarkTheme ? "#1f2937" : "#ffffff",
+            border: `1px solid ${isDarkTheme ? "#374151" : "#e5e7eb"}`,
+            borderRadius: 8,
+            boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+          }}
+          onMouseLeave={() => setMenuPos(null)}
+        >
+          {node.type === "file" ? (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <button
+                style={{
+                  padding: "6px 10px",
+                  background: "transparent",
+                  border: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  color: isDarkTheme ? "#d1d5db" : "#374151",
+                }}
+                onClick={() => {
+                  const newName = prompt("重命名为：", node.name) || "";
+                  if (newName)
+                    useEditorStore.getState().renameNode(node, newName);
+                  setMenuPos(null);
+                }}
+              >
+                重命名
+              </button>
+              <button
+                style={{
+                  padding: "6px 10px",
+                  background: "transparent",
+                  border: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  color: "#dc2626",
+                }}
+                onClick={() => {
+                  useEditorStore.getState().deleteNode(node);
+                  setMenuPos(null);
+                }}
+              >
+                删除
+              </button>
             </div>
           ) : (
-            <div style={{ display:'flex', flexDirection:'column' }}>
-              <button style={{ padding: '6px 10px', background:'transparent', border:'none', textAlign:'left', cursor:'pointer', color: isDarkTheme ? '#d1d5db' : '#374151' }} onClick={() => { useEditorStore.getState().newFileIn(node.path); setMenuPos(null) }}>新建文件</button>
-              <button style={{ padding: '6px 10px', background:'transparent', border:'none', textAlign:'left', cursor:'pointer', color: isDarkTheme ? '#d1d5db' : '#374151' }} onClick={() => { useEditorStore.getState().newFolderIn(node.path); setMenuPos(null) }}>新建文件夹</button>
-              <button style={{ padding: '6px 10px', background:'transparent', border:'none', textAlign:'left', cursor:'pointer', color: '#dc2626' }} onClick={() => { useEditorStore.getState().deleteNode(node); setMenuPos(null) }}>删除</button>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <button
+                style={{
+                  padding: "6px 10px",
+                  background: "transparent",
+                  border: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  color: isDarkTheme ? "#d1d5db" : "#374151",
+                }}
+                onClick={() => {
+                  useEditorStore.getState().newFileIn(node.path);
+                  setMenuPos(null);
+                }}
+              >
+                新建文件
+              </button>
+              <button
+                style={{
+                  padding: "6px 10px",
+                  background: "transparent",
+                  border: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  color: isDarkTheme ? "#d1d5db" : "#374151",
+                }}
+                onClick={() => {
+                  useEditorStore.getState().newFolderIn(node.path);
+                  setMenuPos(null);
+                }}
+              >
+                新建文件夹
+              </button>
+              <button
+                style={{
+                  padding: "6px 10px",
+                  background: "transparent",
+                  border: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  color: "#dc2626",
+                }}
+                onClick={() => {
+                  useEditorStore.getState().deleteNode(node);
+                  setMenuPos(null);
+                }}
+              >
+                删除
+              </button>
             </div>
           )}
         </div>
       )}
-      
-      {node.type === 'directory' && isExpanded && node.children && (
+
+      {node.type === "directory" && isExpanded && node.children && (
         <div>
           {node.children.map((child) => (
             <FileTreeItem
@@ -115,82 +224,140 @@ function FileTreeItem({ node, depth, onFileClick, onFolderToggle, isDarkTheme }:
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default function Sidebar({ className = '', width = 250 }: SidebarProps) {
-  const { fileTree, config, pickDirectory, refreshDirectory, openFileNode } = useEditorStore()
-  
-  const isDarkTheme = config.theme === 'dark'
-  
+export default function Sidebar({ className = "", width = 250 }: SidebarProps) {
+  const {
+    fileTree,
+    config,
+    pickDirectory,
+    refreshDirectory,
+    openFileNode,
+    sidebarMode,
+    setSidebarMode,
+  } = useEditorStore();
+  const { createCard } = useCardStore();
+
+  const isDarkTheme = config.theme === "dark";
+
   // Mock file tree data - in a real app, this would come from the file system
-  const mockFileTree: FileTreeNode[] = []
-  
+  const mockFileTree: FileTreeNode[] = [];
+
   const handleFileClick = (path: string) => {
-    const node = findNodeByPath(fileTree, path)
-    if (node) openFileNode(node)
-  }
-  
+    const node = findNodeByPath(fileTree, path);
+    if (node) openFileNode(node);
+  };
+
   const handleFolderToggle = (path: string) => {
-    console.log(`Toggling folder: ${path}`)
-  }
-  
-  const handleNewFile = () => useEditorStore.getState().newFileIn('')
-  
-  const handleRefresh = () => { refreshDirectory() }
-  
+    console.log(`Toggling folder: ${path}`);
+  };
+
+  const handleNewClick = () => {
+    if (useEditorStore.getState().sidebarMode === "cards") {
+      void createCard();
+    } else {
+      useEditorStore.getState().newFileIn("");
+    }
+  };
+
+  const handleRefresh = () => {
+    refreshDirectory();
+  };
+
   return (
-    <div 
+    <div
       className={`sidebar ${className}`}
       style={{
         width: `${width}px`,
-        backgroundColor: isDarkTheme ? '#111827' : '#ffffff',
-        borderRight: isDarkTheme ? '1px solid #374151' : '1px solid #e5e7eb',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%'
+        backgroundColor: isDarkTheme ? "#111827" : "#ffffff",
+        borderRight: isDarkTheme ? "1px solid #374151" : "1px solid #e5e7eb",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
       }}
     >
       {/* Sidebar header */}
-      <div 
+      <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          borderBottom: isDarkTheme ? '1px solid #374151' : '1px solid #e5e7eb'
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 16px",
+          borderBottom: isDarkTheme ? "1px solid #374151" : "1px solid #e5e7eb",
         }}
       >
-        <h3 style={{ 
-          margin: 0, 
-          fontSize: '14px', 
-          fontWeight: '600',
-          color: isDarkTheme ? '#d1d5db' : '#374151'
-        }}>
-          Files
-        </h3>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <button
-            onClick={handleNewFile}
-            title="New File"
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '24px',
-              height: '24px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: 'transparent',
-              color: isDarkTheme ? '#d1d5db' : '#374151',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s'
+              display: "flex",
+              borderRadius: 999,
+              border: isDarkTheme ? "1px solid #374151" : "1px solid #e5e7eb",
+              overflow: "hidden",
+            }}
+          >
+            <button
+              onClick={() => setSidebarMode("files")}
+              style={{
+                padding: "4px 10px",
+                fontSize: 12,
+                border: "none",
+                cursor: "pointer",
+                background:
+                  sidebarMode === "files"
+                    ? isDarkTheme
+                      ? "#374151"
+                      : "#f3f4f6"
+                    : "transparent",
+                color: isDarkTheme ? "#d1d5db" : "#374151",
+              }}
+            >
+              文件
+            </button>
+            <button
+              onClick={() => setSidebarMode("cards")}
+              style={{
+                padding: "4px 10px",
+                fontSize: 12,
+                border: "none",
+                cursor: "pointer",
+                background:
+                  sidebarMode === "cards"
+                    ? isDarkTheme
+                      ? "#374151"
+                      : "#f3f4f6"
+                    : "transparent",
+                color: isDarkTheme ? "#d1d5db" : "#374151",
+              }}
+            >
+              卡片
+            </button>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "4px" }}>
+          <button
+            onClick={handleNewClick}
+            title={sidebarMode === "cards" ? "新建卡片" : "New File"}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "24px",
+              height: "24px",
+              border: "none",
+              borderRadius: "4px",
+              backgroundColor: "transparent",
+              color: isDarkTheme ? "#d1d5db" : "#374151",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = isDarkTheme ? '#374151' : '#f3f4f6'
+              e.currentTarget.style.backgroundColor = isDarkTheme
+                ? "#374151"
+                : "#f3f4f6";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.backgroundColor = "transparent";
             }}
           >
             <Plus size={14} />
@@ -199,23 +366,25 @@ export default function Sidebar({ className = '', width = 250 }: SidebarProps) {
             onClick={() => pickDirectory()}
             title="Open Folder"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '24px',
-              height: '24px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: 'transparent',
-              color: isDarkTheme ? '#d1d5db' : '#374151',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s'
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "24px",
+              height: "24px",
+              border: "none",
+              borderRadius: "4px",
+              backgroundColor: "transparent",
+              color: isDarkTheme ? "#d1d5db" : "#374151",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = isDarkTheme ? '#374151' : '#f3f4f6'
+              e.currentTarget.style.backgroundColor = isDarkTheme
+                ? "#374151"
+                : "#f3f4f6";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.backgroundColor = "transparent";
             }}
           >
             <FolderOpen size={14} />
@@ -224,60 +393,71 @@ export default function Sidebar({ className = '', width = 250 }: SidebarProps) {
             onClick={handleRefresh}
             title="Refresh"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '24px',
-              height: '24px',
-              border: 'none',
-              borderRadius: '4px',
-              backgroundColor: 'transparent',
-              color: isDarkTheme ? '#d1d5db' : '#374151',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s'
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "24px",
+              height: "24px",
+              border: "none",
+              borderRadius: "4px",
+              backgroundColor: "transparent",
+              color: isDarkTheme ? "#d1d5db" : "#374151",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = isDarkTheme ? '#374151' : '#f3f4f6'
+              e.currentTarget.style.backgroundColor = isDarkTheme
+                ? "#374151"
+                : "#f3f4f6";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.backgroundColor = "transparent";
             }}
           >
             <RefreshCw size={14} />
           </button>
         </div>
       </div>
-      
-      {/* File tree */}
-      <div 
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '8px 0'
-        }}
-      >
-        {(fileTree.length > 0 ? fileTree : mockFileTree).map((node) => (
-          <FileTreeItem
-            key={node.path}
-            node={node}
-            depth={0}
-            onFileClick={handleFileClick}
-            onFolderToggle={handleFolderToggle}
-            isDarkTheme={isDarkTheme}
-          />
-        ))}
-      </div>
+
+      {/* Body */}
+      {sidebarMode === "files" ? (
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "8px 0",
+          }}
+        >
+          {(fileTree.length > 0 ? fileTree : mockFileTree).map((node) => (
+            <FileTreeItem
+              key={node.path}
+              node={node}
+              depth={0}
+              onFileClick={handleFileClick}
+              onFolderToggle={handleFolderToggle}
+              isDarkTheme={isDarkTheme}
+            />
+          ))}
+        </div>
+      ) : (
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <CardList />
+        </div>
+      )}
     </div>
-  )
+  );
 }
 
-function findNodeByPath(tree: FileTreeNode[], path: string): FileTreeNode | null {
+function findNodeByPath(
+  tree: FileTreeNode[],
+  path: string,
+): FileTreeNode | null {
   for (const n of tree) {
-    if (n.path === path) return n
-    if (n.type === 'directory' && n.children) {
-      const r = findNodeByPath(n.children, path)
-      if (r) return r
+    if (n.path === path) return n;
+    if (n.type === "directory" && n.children) {
+      const r = findNodeByPath(n.children, path);
+      if (r) return r;
     }
   }
-  return null
+  return null;
 }

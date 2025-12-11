@@ -1,5 +1,5 @@
-import { Schema } from 'prosemirror-model'
-import type { Node as PMNode, Mark as PMMark } from 'prosemirror-model'
+import { Schema } from "prosemirror-model";
+import type { Node as PMNode, Mark as PMMark } from "prosemirror-model";
 
 /*
   Classic 模式的 ProseMirror Schema 定义
@@ -10,170 +10,249 @@ import type { Node as PMNode, Mark as PMMark } from 'prosemirror-model'
 */
 
 const nodes = {
-  doc: { content: 'block+' },
+  doc: { content: "block+" },
   paragraph: {
-    group: 'block',
-    content: 'inline*',
-    toDOM: () => ['p', 0] as const,
-    parseDOM: [{ tag: 'p' }]
+    group: "block",
+    content: "inline*",
+    toDOM: () => ["p", 0] as const,
+    parseDOM: [{ tag: "p" }],
   },
-  text: { group: 'inline' },
+  text: { group: "inline" },
   hard_break: {
     inline: true,
-    group: 'inline',
+    group: "inline",
     selectable: false,
-    toDOM: () => ['br'] as const,
-    parseDOM: [{ tag: 'br' }]
+    toDOM: () => ["br"] as const,
+    parseDOM: [{ tag: "br" }],
   },
   // 标题节点：通过 attrs.level 控制 h1~h6级别
   heading: {
-    group: 'block',
+    group: "block",
     attrs: { level: { default: 1 } },
-    content: 'inline*',
-    toDOM: (node: PMNode) => ['h' + (node.attrs.level || 1), 0] as const,
+    content: "inline*",
+    toDOM: (node: PMNode) => ["h" + (node.attrs.level || 1), 0] as const,
     parseDOM: [
-      { tag: 'h1', attrs: { level: 1 } },
-      { tag: 'h2', attrs: { level: 2 } },
-      { tag: 'h3', attrs: { level: 3 } },
-      { tag: 'h4', attrs: { level: 4 } },
-      { tag: 'h5', attrs: { level: 5 } },
-      { tag: 'h6', attrs: { level: 6 } }
-    ]
+      { tag: "h1", attrs: { level: 1 } },
+      { tag: "h2", attrs: { level: 2 } },
+      { tag: "h3", attrs: { level: 3 } },
+      { tag: "h4", attrs: { level: 4 } },
+      { tag: "h5", attrs: { level: 5 } },
+      { tag: "h6", attrs: { level: 6 } },
+    ],
   },
   // 引用块：包含一个或多个块级子节点
   blockquote: {
-    group: 'block',
-    content: 'block+',
-    toDOM: () => ['blockquote', 0] as const,
-    parseDOM: [{ tag: 'blockquote' }]
+    group: "block",
+    content: "block+",
+    toDOM: () => ["blockquote", 0] as const,
+    parseDOM: [{ tag: "blockquote" }],
   },
   // 代码块：纯文本、无标记；language 作为数据属性存储
   code_block: {
-    group: 'block',
-    content: 'text*',
-    marks: '',
+    group: "block",
+    content: "text*",
+    marks: "",
     code: true,
-    attrs: { language: { default: '' } },
-    toDOM: (node: PMNode) => ['pre', ['code', node.attrs.language ? { 'data-language': node.attrs.language } : {}, 0]] as const,
-    parseDOM: [{ tag: 'pre', preserveWhitespace: 'full' as const }]
+    attrs: { language: { default: "" } },
+    toDOM: (node: PMNode) =>
+      [
+        "pre",
+        [
+          "code",
+          node.attrs.language ? { "data-language": node.attrs.language } : {},
+          0,
+        ],
+      ] as const,
+    parseDOM: [{ tag: "pre", preserveWhitespace: "full" as const }],
   },
   // 有序列表/无序列表与列表项，支持任务清单（checked）
   ordered_list: {
-    group: 'block',
-    content: 'list_item+',
+    group: "block",
+    content: "list_item+",
     attrs: { order: { default: 1 } },
-    toDOM: (node: PMNode) => ['ol', node.attrs.order && node.attrs.order !== 1 ? { start: node.attrs.order } : {}, 0] as const,
-    parseDOM: [{ tag: 'ol' }]
+    toDOM: (node: PMNode) =>
+      [
+        "ol",
+        node.attrs.order && node.attrs.order !== 1
+          ? { start: node.attrs.order }
+          : {},
+        0,
+      ] as const,
+    parseDOM: [{ tag: "ol" }],
   },
   bullet_list: {
-    group: 'block',
-    content: 'list_item+',
-    toDOM: () => ['ul', 0] as const,
-    parseDOM: [{ tag: 'ul' }]
+    group: "block",
+    content: "list_item+",
+    toDOM: () => ["ul", 0] as const,
+    parseDOM: [{ tag: "ul" }],
   },
   list_item: {
     attrs: { checked: { default: null } },
-    content: 'paragraph block*',
-    toDOM: (node: PMNode) => ['li', node.attrs.checked !== null ? { 'data-checked': String(!!node.attrs.checked) } : {}, 0] as const,
-    parseDOM: [{ tag: 'li', getAttrs: (el: Element) => {
-      const val = el.getAttribute ? el.getAttribute('data-checked') : null
-      if (val == null) return { checked: null }
-      return { checked: val === 'true' }
-    } }]
+    content: "paragraph block*",
+    toDOM: (node: PMNode) =>
+      [
+        "li",
+        node.attrs.checked !== null
+          ? { "data-checked": String(!!node.attrs.checked) }
+          : {},
+        0,
+      ] as const,
+    parseDOM: [
+      {
+        tag: "li",
+        getAttrs: (el: Element) => {
+          const val = el.getAttribute ? el.getAttribute("data-checked") : null;
+          if (val == null) return { checked: null };
+          return { checked: val === "true" };
+        },
+      },
+    ],
   },
   // 水平分割线
   horizontal_rule: {
-    group: 'block',
-    toDOM: () => ['hr'] as const,
-    parseDOM: [{ tag: 'hr' }]
+    group: "block",
+    toDOM: () => ["hr"] as const,
+    parseDOM: [{ tag: "hr" }],
   },
   // 表格：支持列对齐信息 colalign；使用 tableRole 供插件识别
   table: {
-    group: 'block',
-    content: 'table_row+',
-    attrs: { colalign: { default: [] as Array<'left' | 'center' | 'right'> } },
-    tableRole: 'table',
-    toDOM: () => ['table', ['tbody', 0]] as const,
-    parseDOM: [{ tag: 'table' }]
+    group: "block",
+    content: "table_row+",
+    attrs: { colalign: { default: [] as Array<"left" | "center" | "right"> } },
+    tableRole: "table",
+    toDOM: () => ["table", ["tbody", 0]] as const,
+    parseDOM: [{ tag: "table" }],
   },
   table_row: {
-    content: '(table_cell|table_header)+',
-    tableRole: 'row',
-    toDOM: () => ['tr', 0] as const,
-    parseDOM: [{ tag: 'tr' }]
+    content: "(table_cell|table_header)+",
+    tableRole: "row",
+    toDOM: () => ["tr", 0] as const,
+    parseDOM: [{ tag: "tr" }],
   },
   table_cell: {
-    content: 'block+',
-    attrs: { colspan: { default: 1 }, rowspan: { default: 1 }, colwidth: { default: null } },
-    tableRole: 'cell',
-    toDOM: () => ['td', 0] as const,
-    parseDOM: [{ tag: 'td' }]
+    content: "block+",
+    attrs: {
+      colspan: { default: 1 },
+      rowspan: { default: 1 },
+      colwidth: { default: null },
+    },
+    tableRole: "cell",
+    toDOM: () => ["td", 0] as const,
+    parseDOM: [{ tag: "td" }],
   },
   table_header: {
-    content: 'block+',
-    attrs: { colspan: { default: 1 }, rowspan: { default: 1 }, colwidth: { default: null } },
-    tableRole: 'header_cell',
-    toDOM: () => ['th', 0] as const,
-    parseDOM: [{ tag: 'th' }]
+    content: "block+",
+    attrs: {
+      colspan: { default: 1 },
+      rowspan: { default: 1 },
+      colwidth: { default: null },
+    },
+    tableRole: "header_cell",
+    toDOM: () => ["th", 0] as const,
+    parseDOM: [{ tag: "th" }],
   },
   // 数学块：文本内容+attrs（原始、环境、编号），无标记
   math_block: {
-    group: 'block',
-    content: 'text*',
-    marks: '',
-    attrs: { raw: { default: '' }, env: { default: '' }, numbered: { default: false } },
-    toDOM: () => ['div', { class: 'pm-math-block' }, 0] as const,
-    parseDOM: [{ tag: 'div.pm-math-block' }]
-  }
-  , mermaid_block: {
+    group: "block",
+    content: "text*",
+    marks: "",
+    attrs: {
+      raw: { default: "" },
+      env: { default: "" },
+      numbered: { default: false },
+    },
+    toDOM: () => ["div", { class: "pm-math-block" }, 0] as const,
+    parseDOM: [{ tag: "div.pm-math-block" }],
+  },
+  mermaid_block: {
     // Mermaid 图表块：文本内容作为源码；theme 由属性控制
-    group: 'block',
-    content: 'text*',
-    marks: '',
-    attrs: { theme: { default: '' } },
-    toDOM: () => ['div', { class: 'pm-mermaid-block' }, 0] as const,
-    parseDOM: [{ tag: 'div.pm-mermaid-block' }]
-  }
-  , abc_block: {
+    group: "block",
+    content: "text*",
+    marks: "",
+    attrs: { theme: { default: "" } },
+    toDOM: () => ["div", { class: "pm-mermaid-block" }, 0] as const,
+    parseDOM: [{ tag: "div.pm-mermaid-block" }],
+  },
+  abc_block: {
     // ABC 乐谱块：文本内容作为 ABC 记谱源码
-    group: 'block',
-    content: 'text*',
-    marks: '',
-    toDOM: () => ['div', { class: 'pm-abc-block' }, 0] as const,
-    parseDOM: [{ tag: 'div.pm-abc-block' }]
-  }
-  , toc_block: {
+    group: "block",
+    content: "text*",
+    marks: "",
+    toDOM: () => ["div", { class: "pm-abc-block" }, 0] as const,
+    parseDOM: [{ tag: "div.pm-abc-block" }],
+  },
+  toc_block: {
     // 目录块：无内容，仅作为 NodeView 的占位与渲染锚点
-    group: 'block',
-    content: '',
-    marks: '',
-    toDOM: () => ['div', { class: 'pm-toc-block' }] as const,
-    parseDOM: [{ tag: 'div.pm-toc-block' }]
-  }
-}
+    group: "block",
+    content: "",
+    marks: "",
+    toDOM: () => ["div", { class: "pm-toc-block" }] as const,
+    parseDOM: [{ tag: "div.pm-toc-block" }],
+  },
+};
 
 // 常用内联标记：加粗、斜体、代码、链接
 const marks = {
-  strong: { toDOM: () => ['strong', 0] as const, parseDOM: [{ tag: 'strong' }, { tag: 'b', getAttrs: () => ({}) }] },
-  em: { toDOM: () => ['em', 0] as const, parseDOM: [{ tag: 'em' }, { tag: 'i', getAttrs: () => ({}) }] },
-  code: { toDOM: () => ['code', 0] as const, parseDOM: [{ tag: 'code' }] },
+  strong: {
+    toDOM: () => ["strong", 0] as const,
+    parseDOM: [{ tag: "strong" }, { tag: "b", getAttrs: () => ({}) }],
+  },
+  em: {
+    toDOM: () => ["em", 0] as const,
+    parseDOM: [{ tag: "em" }, { tag: "i", getAttrs: () => ({}) }],
+  },
+  code: { toDOM: () => ["code", 0] as const, parseDOM: [{ tag: "code" }] },
   link: {
     attrs: { href: {}, title: { default: null } },
     inclusive: false,
-    toDOM: (mark: PMMark) => ['a', { href: (mark.attrs as { href?: string }).href || '', title: (mark.attrs as { title?: string | null }).title || null, rel: 'noopener noreferrer' }, 0] as const,
-    parseDOM: [{ tag: 'a[href]', getAttrs: (el: Element) => ({ href: el.getAttribute('href') || '', title: el.getAttribute('title') || null }) }]
-  }
-}
+    toDOM: (mark: PMMark) =>
+      [
+        "a",
+        {
+          href: (mark.attrs as { href?: string }).href || "",
+          title: (mark.attrs as { title?: string | null }).title || null,
+          rel: "noopener noreferrer",
+        },
+        0,
+      ] as const,
+    parseDOM: [
+      {
+        tag: "a[href]",
+        getAttrs: (el: Element) => ({
+          href: el.getAttribute("href") || "",
+          title: el.getAttribute("title") || null,
+        }),
+      },
+    ],
+  },
+};
 
 // 以图片作为内联节点：允许直接在文档中编辑 alt/src/title
-; (nodes as unknown as Record<string, unknown>).image = {
+(nodes as unknown as Record<string, unknown>).image = {
   inline: true,
-  group: 'inline',
+  group: "inline",
   selectable: false,
   attrs: { src: {}, alt: { default: null }, title: { default: null } },
-  toDOM: (node: PMNode) => ['img', { src: node.attrs.src || '', alt: node.attrs.alt || null, title: node.attrs.title || null }] as const,
-  parseDOM: [{ tag: 'img', getAttrs: (el: Element) => ({ src: el.getAttribute('src') || '', alt: el.getAttribute('alt') || null, title: el.getAttribute('title') || null }) }]
-}
+  toDOM: (node: PMNode) =>
+    [
+      "img",
+      {
+        src: node.attrs.src || "",
+        alt: node.attrs.alt || null,
+        title: node.attrs.title || null,
+      },
+    ] as const,
+  parseDOM: [
+    {
+      tag: "img",
+      getAttrs: (el: Element) => ({
+        src: el.getAttribute("src") || "",
+        alt: el.getAttribute("alt") || null,
+        title: el.getAttribute("title") || null,
+      }),
+    },
+  ],
+};
 
 // 导出统一的 Schema，供 ClassicEditor 初始化使用
-export const schema = new Schema({ nodes, marks })
+export const schema = new Schema({ nodes, marks });

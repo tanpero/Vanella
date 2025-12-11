@@ -20,5 +20,5 @@ await build({
   treeShaking: true,
   legalComments: 'none',
   drop: ['console', 'debugger'],
+  outExtension: { '.js': '.cjs' },
 })
-

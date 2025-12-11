@@ -1,67 +1,69 @@
-import React, { useEffect } from 'react'
-import Toolbar from '@/components/Toolbar'
-import Sidebar from '@/components/Sidebar'
-import EditorShell from '@/modes/EditorShell'
-import StatusBar from '@/components/StatusBar'
-import ProgressOverlay from '@/components/ProgressOverlay'
-import SettingsPanel from '@/components/SettingsPanel'
-import SlidesPreview from '@/components/SlidesPreview'
-import { useEditorStore } from '@/stores/editorStore'
-import { FileState, EditorTab } from '@/types/editor'
-import { generateId } from '@/utils/markdown'
-import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
-import { exportMarkdown, exportHTML } from '@/utils/export'
+import React, { useEffect } from "react";
+import Toolbar from "@/components/Toolbar";
+import Sidebar from "@/components/Sidebar";
+import EditorShell from "@/modes/EditorShell";
+import StatusBar from "@/components/StatusBar";
+import ProgressOverlay from "@/components/ProgressOverlay";
+import SettingsPanel from "@/components/SettingsPanel";
+import SlidesPreview from "@/components/SlidesPreview";
+import { useEditorStore } from "@/stores/editorStore";
+import { FileState, EditorTab } from "@/types/editor";
+import { generateId } from "@/utils/markdown";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { exportMarkdown, exportHTML } from "@/utils/export";
+import CardAutosave from "@/components/CardAutosave";
+import { useCardStore } from "@/stores/cardStore";
 
 export default function Home() {
-  
-  const { 
-    config, 
-    sidebarVisible, 
-    settingsVisible, 
-    activeFile, 
-    setActiveFile, 
-    addTab, 
+  const {
+    config,
+    sidebarVisible,
+    settingsVisible,
+    activeFile,
+    setActiveFile,
+    addTab,
     toggleSettings,
-    insertMarkdownSyntax 
-  } = useEditorStore()
-  
-  const isDarkTheme = config.theme === 'dark'
- const [sidebarWidth, setSidebarWidth] = React.useState<number>(250)
-  const [resizing, setResizing] = React.useState<boolean>(false)
-  const startXRef = React.useRef<number>(0)
-  const startWRef = React.useRef<number>(250)
+    insertMarkdownSyntax,
+  } = useEditorStore();
+  const { loadCards } = useCardStore();
+
+  const isDarkTheme = config.theme === "dark";
+  const [sidebarWidth, setSidebarWidth] = React.useState<number>(250);
+  const [resizing, setResizing] = React.useState<boolean>(false);
+  const startXRef = React.useRef<number>(0);
+  const startWRef = React.useRef<number>(250);
 
   const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
-    setResizing(true)
-    startXRef.current = e.clientX
-    startWRef.current = sidebarWidth
+    setResizing(true);
+    startXRef.current = e.clientX;
+    startWRef.current = sidebarWidth;
     const onMove = (ev: MouseEvent) => {
-      const dx = ev.clientX - startXRef.current
-      const next = Math.min(500, Math.max(160, startWRef.current + dx))
-      setSidebarWidth(next)
-    }
+      const dx = ev.clientX - startXRef.current;
+      const next = Math.min(500, Math.max(160, startWRef.current + dx));
+      setSidebarWidth(next);
+    };
     const onUp = () => {
-      setResizing(false)
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }
-  const [slidesPreviewVisible, setSlidesPreviewVisible] = React.useState(false)
-  
+      setResizing(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+  const [slidesPreviewVisible, setSlidesPreviewVisible] = React.useState(false);
+
   // Initialize keyboard shortcuts
-  useKeyboardShortcuts()
-  
+  useKeyboardShortcuts();
+
   // Ref managed in SourceEditor
-  
+
   // Initialize with a welcome file
   useEffect(() => {
     if (!activeFile) {
       const welcomeFile: FileState = {
         id: generateId(),
-        path: '/welcome.md',
-        name: 'welcome.md',
+        path: "/welcome.md",
+        name: "welcome.md",
         content: String.raw`# Welcome to Vanella
 
 [TOC]
@@ -146,60 +148,69 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
 \`\`\`
 
 **Enjoy writing!** 🚀`
-.replace(/\\`/g, '`').replace(/\\\$/g, '$'),
-        originalContent: '',
+          .replace(/\\`/g, "`")
+          .replace(/\\\$/g, "$"),
+        originalContent: "",
         isDirty: false,
-        isNewFile: false
-      }
-      
-      setActiveFile(welcomeFile)
-      
+        isNewFile: false,
+      };
+
+      setActiveFile(welcomeFile);
+
       const welcomeTab: EditorTab = {
         id: welcomeFile.id,
         name: welcomeFile.name,
         path: welcomeFile.path,
         isActive: true,
-        isDirty: false
-      }
-      
-      addTab(welcomeTab)
+        isDirty: false,
+      };
+
+      addTab(welcomeTab);
     }
-  }, [activeFile, addTab, setActiveFile])
-  
+  }, [activeFile, addTab, setActiveFile]);
+
+  useEffect(() => {
+    void loadCards();
+  }, []);
+
   const handleInsertSyntax = (syntax: string, placeholder?: string) => {
-    insertMarkdownSyntax(syntax, placeholder)
-  }
-  
+    insertMarkdownSyntax(syntax, placeholder);
+  };
+
   const handleNewFile = () => {
     const newFile: FileState = {
       id: generateId(),
       path: `/untitled-${Date.now()}.md`,
-      name: 'untitled.md',
-      content: '',
-      originalContent: '',
+      name: "untitled.md",
+      content: "",
+      originalContent: "",
       isDirty: false,
-      isNewFile: true
-    }
-    
-    setActiveFile(newFile)
-    
+      isNewFile: true,
+    };
+
+    setActiveFile(newFile);
+
     const newTab: EditorTab = {
       id: newFile.id,
       name: newFile.name,
       path: newFile.path,
       isActive: true,
-      isDirty: false
-    }
-    
-    addTab(newTab)
-  }
-  
+      isDirty: false,
+    };
+
+    addTab(newTab);
+  };
+
   const handleOpenFile = async () => {
     try {
-      if (!window.showOpenFilePicker) return
-      const [fh] = await window.showOpenFilePicker({ types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }] })
-      const { readFileWorker } = await import('@/utils/fsWorkerClient')
-      const text = await readFileWorker(fh)
+      if (!window.showOpenFilePicker) return;
+      const [fh] = await window.showOpenFilePicker({
+        types: [
+          { description: "Markdown", accept: { "text/markdown": [".md"] } },
+        ],
+      });
+      const { readFileWorker } = await import("@/utils/fsWorkerClient");
+      const text = await readFileWorker(fh);
       const newFile: FileState = {
         id: generateId(),
         path: fh.name,
@@ -208,53 +219,69 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
         originalContent: text,
         isDirty: false,
         isNewFile: false,
-        fileHandle: fh
-      }
-      setActiveFile(newFile)
-      addTab({ id: newFile.id, name: newFile.name, path: newFile.path, isActive: true, isDirty: false })
-    } catch (e) { console.warn(e) }
-  }
-  
+        fileHandle: fh,
+      };
+      setActiveFile(newFile);
+      addTab({
+        id: newFile.id,
+        name: newFile.name,
+        path: newFile.path,
+        isActive: true,
+        isDirty: false,
+      });
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   const handleSaveFile = async () => {
-    if (!activeFile) return
+    if (!activeFile) return;
     try {
-      const { writeFileWorker } = await import('@/utils/fsWorkerClient')
+      const { writeFileWorker } = await import("@/utils/fsWorkerClient");
       if (activeFile.fileHandle) {
-        await writeFileWorker(activeFile.fileHandle, activeFile.content)
+        await writeFileWorker(activeFile.fileHandle, activeFile.content);
       } else {
-        if (!window.showSaveFilePicker) return
-        const fh = await window.showSaveFilePicker({ suggestedName: activeFile.name, types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }] })
-        await writeFileWorker(fh, activeFile.content)
+        if (!window.showSaveFilePicker) return;
+        const fh = await window.showSaveFilePicker({
+          suggestedName: activeFile.name,
+          types: [
+            { description: "Markdown", accept: { "text/markdown": [".md"] } },
+          ],
+        });
+        await writeFileWorker(fh, activeFile.content);
       }
-    } catch (e) { console.warn(e) }
-  }
-  
-  
-  
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   const handleExportMarkdown = () => {
     if (activeFile?.content) {
-      exportMarkdown(activeFile.content, activeFile.name)
+      exportMarkdown(activeFile.content, activeFile.name);
     }
-  }
-  
+  };
+
   const handleExportHTML = async () => {
     if (activeFile?.content) {
-      await exportHTML(activeFile.content, activeFile.name.replace('.md', '.html'))
+      await exportHTML(
+        activeFile.content,
+        activeFile.name.replace(".md", ".html"),
+      );
     }
-  }
+  };
 
   const handlePreviewSlides = async () => {
-    if (activeFile?.content) setSlidesPreviewVisible(true)
-  }
-  
+    if (activeFile?.content) setSlidesPreviewVisible(true);
+  };
+
   return (
-    <div 
+    <div
       className="home"
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        backgroundColor: isDarkTheme ? '#111827' : '#ffffff'
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        backgroundColor: isDarkTheme ? "#111827" : "#ffffff",
       }}
     >
       {/* Toolbar */}
@@ -267,13 +294,13 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
         onExportHTML={handleExportHTML}
         onPreviewSlides={handlePreviewSlides}
       />
-      
+
       {/* Main content area */}
-      <div 
+      <div
         style={{
-          display: 'flex',
+          display: "flex",
           flex: 1,
-          overflow: 'hidden'
+          overflow: "hidden",
         }}
       >
         {/* Sidebar */}
@@ -283,64 +310,71 @@ efe edB | d2d def | gfe edB |1 dBA ABd :|2 dBA AFD |]
             <div
               onMouseDown={handleResizeStart}
               style={{
-                width: '6px',
-                cursor: 'col-resize',
-                backgroundColor: resizing ? (isDarkTheme ? '#374151' : '#e5e7eb') : 'transparent',
-                borderLeft: isDarkTheme ? '1px solid #374151' : '1px solid #e5e7eb',
-                borderRight: isDarkTheme ? '1px solid #374151' : '1px solid #e5e7eb'
+                width: "6px",
+                cursor: "col-resize",
+                backgroundColor: resizing
+                  ? isDarkTheme
+                    ? "#374151"
+                    : "#e5e7eb"
+                  : "transparent",
+                borderLeft: isDarkTheme
+                  ? "1px solid #374151"
+                  : "1px solid #e5e7eb",
+                borderRight: isDarkTheme
+                  ? "1px solid #374151"
+                  : "1px solid #e5e7eb",
               }}
             />
           </>
         )}
-        
+
         {/* Editor and Preview */}
-        <div 
+        <div
           style={{
             flex: 1,
-            display: 'flex',
-            overflow: 'hidden'
+            display: "flex",
+            overflow: "hidden",
           }}
         >
           {/* Editor */}
-          <div 
+          <div
             style={{
               flex: 1,
-              display: 'flex',
-              flexDirection: 'column'
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <div 
+            <div
               style={{
                 flex: 1,
-                padding: '16px',
-                overflow: 'auto'
+                padding: "16px",
+                overflow: "auto",
               }}
             >
               <EditorShell />
+              <CardAutosave />
             </div>
           </div>
-          
+
           {/* Preview disabled in classic mode; reserve for source mode if needed */}
         </div>
       </div>
-      
+
       {/* Status Bar */}
       <StatusBar />
       <ProgressOverlay />
-      
+
       {/* Settings Panel */}
-      {settingsVisible && (
-        <SettingsPanel onClose={toggleSettings} />
-      )}
+      {settingsVisible && <SettingsPanel onClose={toggleSettings} />}
 
       {slidesPreviewVisible && activeFile?.content && (
         <SlidesPreview
           visible={slidesPreviewVisible}
           content={activeFile.content}
-          title={activeFile.name.replace('.md', '')}
+          title={activeFile.name.replace(".md", "")}
           onClose={() => setSlidesPreviewVisible(false)}
         />
       )}
     </div>
-  )
+  );
 }

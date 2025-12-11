@@ -18,10 +18,30 @@ function loadNative() {
 const native = loadNative()
 
 function hashSha256(input) {
-  if (native && typeof native.hash_sha256 === 'function') return native.hash_sha256(input)
+  if (native && typeof native.hashSha256 === 'function') return native.hashSha256(input)
   const h = createHash('sha256')
   h.update(input)
   return h.digest('hex')
+}
+
+function resolveDbPath() {
+  const base = app.getPath('userData')
+  return path.join(base, 'vanella.sqlite3')
+}
+
+function dbExecute(sql, params) {
+  if (!native || typeof native.dbExecute !== 'function') throw new Error('native addon not loaded')
+  const dbPath = resolveDbPath()
+  const paramsJson = JSON.stringify(Array.isArray(params) ? params : [])
+  return native.dbExecute(dbPath, sql, paramsJson)
+}
+
+function dbQuery(sql, params) {
+  if (!native || typeof native.dbQuery !== 'function') throw new Error('native addon not loaded')
+  const dbPath = resolveDbPath()
+  const paramsJson = JSON.stringify(Array.isArray(params) ? params : [])
+  const json = native.dbQuery(dbPath, sql, paramsJson)
+  return JSON.parse(json)
 }
 
 function resolveIcon() {
@@ -41,8 +61,8 @@ function createWindow() {
     }
   })
 
-  const devUrl = 'http://localhost:5173'
-  if (process.env.ELECTRON_DEV === 'true') {
+  const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'
+  if (process.env.ELECTRON_DEV === 'true' || process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(devUrl)
     win.webContents.openDevTools({ mode: 'detach' })
   } else {
@@ -91,6 +111,34 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     ipcMain.handle('hash-sha256', async (_evt, text) => hashSha256(text))
+    ipcMain.handle('db:init', async () => {
+      if (!native || typeof native.dbInit !== 'function') return false
+      return native.dbInit(resolveDbPath())
+    })
+    ipcMain.handle('db:execute', async (_evt, payload) => {
+      const sql = typeof payload?.sql === 'string' ? payload.sql : ''
+      const params = Array.isArray(payload?.params) ? payload.params : []
+      return dbExecute(sql, params)
+    })
+    ipcMain.handle('db:query', async (_evt, payload) => {
+      const sql = typeof payload?.sql === 'string' ? payload.sql : ''
+      const params = Array.isArray(payload?.params) ? payload.params : []
+      return dbQuery(sql, params)
+    })
+    ipcMain.handle('db:migrate', async (_evt, migrations) => {
+      if (!native || typeof native.dbMigrate !== 'function') return false
+      const migs = Array.isArray(migrations) ? migrations : []
+      return native.dbMigrate(resolveDbPath(), migs)
+    })
+    ipcMain.handle('db:backup', async (_evt, backupPath) => {
+      if (!native || typeof native.dbBackup !== 'function') return false
+      if (typeof backupPath !== 'string' || !backupPath) return false
+      return native.dbBackup(resolveDbPath(), backupPath)
+    })
+    ipcMain.handle('db:vacuum', async () => {
+      if (!native || typeof native.dbVacuum !== 'function') return false
+      return native.dbVacuum(resolveDbPath())
+    })
     ipcMain.handle('read-file', async (_evt, filePath) => {
       const buf = await fs.promises.readFile(filePath, 'utf-8')
       return buf
